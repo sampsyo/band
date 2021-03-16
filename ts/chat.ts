@@ -1,4 +1,4 @@
-window.addEventListener('DOMContentLoaded', (event) => {
+window.addEventListener('DOMContentLoaded', async (event) => {
     const outEl = document.getElementById("output")!;
     const formEl = document.getElementById("send")! as HTMLFormElement;
     const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
@@ -9,13 +9,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
         outEl.appendChild(line);
     }
 
-    fetch('/history')
-        .then((resp) => resp.json())
-        .then((data) => {
-            for (const msg of data) {
-                addMessage(msg);
-            }
-        });
+    let resp = await fetch('/history');
+    let data = await resp.json();
+    for (const msg of data) {
+        addMessage(msg);
+    }
 
     const source = new EventSource("/chat");
     source.addEventListener('open', (event) => {

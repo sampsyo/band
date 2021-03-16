@@ -1,7 +1,8 @@
 {
     "compilerOptions": {
         "strict": true,
-        "outDir": "static/js"
+        "outDir": "static/js",
+        "lib": ["ES2015", "DOM"]
     },
     "include": ["ts/**/*.ts"]
 }
