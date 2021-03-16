@@ -34,7 +34,7 @@ async fn main() -> tide::Result<()> {
     app.at("/send").post(|mut req: tide::Request<State>| async move {
         let data: String = req.body_json().await?;
         println!("message: {}", data);
-        Ok("")
+        Ok("ok")
     });
 
     app.listen("localhost:8080").await?;
