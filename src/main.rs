@@ -24,6 +24,12 @@ async fn main() -> tide::Result<()> {
 
     app.at("/static").serve_dir("static/")?;
 
+    app.at("/send").post(|mut req: tide::Request<Tera>| async move {
+        let data: String = req.body_json().await?;
+        println!("message: {}", data);
+        Ok("")
+    });
+
     app.listen("localhost:8080").await?;
     Ok(())
 }
