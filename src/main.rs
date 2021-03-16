@@ -1,4 +1,5 @@
 use tera::Tera;
+use tide::Body;
 use tide_tera::prelude::*;
 use broadcaster::BroadcastChannel;
 use futures_util::StreamExt;
@@ -43,6 +44,11 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
     tera.render_response("chat.html", &context! {})
 }
 
+async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
+    let hist = req.state().history.lock().unwrap();
+    Ok(Body::from_json(&*hist)?)
+}
+
 #[async_std::main]
 async fn main() -> tide::Result<()> {
     tide::log::start();
@@ -60,6 +66,7 @@ async fn main() -> tide::Result<()> {
     app.at("/").get(chat_page);
     app.at("/static").serve_dir("static/")?;
     app.at("/send").post(chat_send);
+    app.at("/history").get(chat_history);
 
     app.listen("localhost:8080").await?;
     Ok(())

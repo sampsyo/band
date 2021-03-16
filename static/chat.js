@@ -3,6 +3,20 @@ window.addEventListener('DOMContentLoaded', (event) => {
     const formEl = document.getElementById("send");
     const msgEl = document.getElementById("sendMessage");
 
+    function addMessage(msg) {
+        const line = document.createElement("p");
+        line.textContent = msg;
+        outEl.appendChild(line);
+    }
+
+    fetch('/history')
+        .then((resp) => resp.json())
+        .then((data) => {
+            for (const msg of data) {
+                addMessage(msg);
+            }
+        });
+
     const source = new EventSource("/chat");
     source.addEventListener('open', (event) => {
         console.log("open", event);
@@ -12,9 +26,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     });
     source.addEventListener('message', (event) => {
         console.log("message", event);
-        const line = document.createElement("p");
-        line.textContent = event.data;
-        outEl.appendChild(line);
+        addMessage(event.data);
     });
 
     formEl.addEventListener('submit', (event) => {
