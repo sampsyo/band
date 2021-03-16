@@ -5,8 +5,8 @@ use async_std::channel;
 #[derive(Clone)]
 struct State {
     tera: Tera,
-    sender: channel::Sender<i64>,
-    receiver: channel::Receiver<i64>,
+    sender: channel::Sender<String>,
+    receiver: channel::Receiver<String>,
 }
 
 #[async_std::main]
@@ -24,12 +24,10 @@ async fn main() -> tide::Result<()> {
     });
 
     app.at("/chat").get(tide::sse::endpoint(|req: tide::Request<State>, sender| async move {
-        sender.send("message", "foo", None).await?;
-        sender.send("message", "bar", None).await?;
-
         let receiver = &req.state().receiver;
-        while let Ok(val) = receiver.recv().await {
-            println!("recv'd {}", val);
+        while let Ok(msg) = receiver.recv().await {
+            println!("recv'd {}", msg);
+            sender.send("message", msg, None).await?;
         }
 
         Ok(())
@@ -47,7 +45,7 @@ async fn main() -> tide::Result<()> {
         println!("message: {}", data);
 
         let sender = &req.state().sender;
-        sender.send(42).await?;
+        sender.send(data).await?;
 
         Ok("ok")
     });
