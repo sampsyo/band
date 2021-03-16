@@ -12,8 +12,8 @@ async fn main() -> tide::Result<()> {
     let mut app = tide::with_state(tera);
 
     app.at("/sse").get(sse::endpoint(|_req, sender| async move {
-        sender.send("fruit", "banana", None).await?;
-        sender.send("fruit", "apple", None).await?;
+        sender.send("message", "foo", None).await?;
+        sender.send("message", "bar", None).await?;
         Ok(())
     }));
 

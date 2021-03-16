@@ -9,5 +9,27 @@
 </head>
 <body>
     Hi.
+
+    <div id="output">
+    </div>
+
+    <input type="text" id="input">
 </body>
+<script>
+window.addEventListener("DOMContentLoaded", (event) => {
+    console.log("ready");
+
+    const source = new EventSource("/sse");
+    source.addEventListener('open', (event) => {
+        console.log("open", event);
+    });
+    source.addEventListener('error', (event) => {
+        console.log("error", event);
+    });
+
+    source.addEventListener('message', (event) => {
+        console.log("message", event);
+    });
+});
+</script>
 </html>
