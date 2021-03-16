@@ -1,5 +1,27 @@
 body {
     font-family: sans-serif;
+    margin: 0;
+}
+
+#chat {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#output {
+    flex-grow: 1;
+    margin: 1rem;
+}
+
+#send {
+    display: block;
+    flex: none;
+    margin: 1rem;
+}
+
+#send input {
+    width: 100%;
 }
 
 #output p {
