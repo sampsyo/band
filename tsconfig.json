@@ -1,0 +1,7 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "outDir": "static/js"
+    },
+    "include": ["ts/**/*.ts"]
+}

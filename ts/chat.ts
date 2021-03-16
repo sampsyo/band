@@ -1,9 +1,9 @@
 window.addEventListener('DOMContentLoaded', (event) => {
-    const outEl = document.getElementById("output");
-    const formEl = document.getElementById("send");
-    const msgEl = document.getElementById("sendMessage");
+    const outEl = document.getElementById("output")!;
+    const formEl = document.getElementById("send")! as HTMLFormElement;
+    const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
 
-    function addMessage(msg) {
+    function addMessage(msg: string) {
         const line = document.createElement("p");
         line.textContent = msg;
         outEl.appendChild(line);
