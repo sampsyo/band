@@ -1,17 +1,17 @@
 use tera::Tera;
 use tide_tera::prelude::*;
-use async_std::channel;
+use broadcaster::BroadcastChannel;
+use futures_util::StreamExt;
 
 #[derive(Clone)]
 struct State {
     tera: Tera,
-    sender: channel::Sender<String>,
-    receiver: channel::Receiver<String>,
+    chan: BroadcastChannel<String>,
 }
 
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
-    let receiver = &req.state().receiver;
-    while let Ok(msg) = receiver.recv().await {
+    let chan = &req.state().chan;
+    while let Some(msg) = chan.clone().next().await {
         println!("recv'd {}", msg);
         sender.send("message", msg, None).await?;
     }
@@ -23,8 +23,8 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let data: String = req.body_json().await?;
     println!("message: {}", data);
 
-    let sender = &req.state().sender;
-    sender.send(data).await?;
+    let chan = &req.state().chan;
+    chan.send(&data).await?;
 
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
@@ -41,11 +41,9 @@ async fn main() -> tide::Result<()> {
     let mut tera = Tera::new("templates/**/*")?;
     tera.autoescape_on(vec!["html"]);
 
-    let (sender, receiver) = channel::bounded(16);
     let mut app = tide::with_state(State {
         tera: tera,
-        sender: sender,
-        receiver: receiver,
+        chan: BroadcastChannel::new(),
     });
 
     app.at("/chat").get(tide::sse::endpoint(chat_stream));
