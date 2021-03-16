@@ -1,11 +1,12 @@
 use tera::Tera;
 use tide_tera::prelude::*;
+use async_std::channel;
 
 #[derive(Clone)]
 struct State {
     tera: Tera,
-    sender: broadcast_channel::Sender<i64>,
-    receiver: broadcast_channel::Receiver<i64>,
+    sender: channel::Sender<i64>,
+    receiver: channel::Receiver<i64>,
 }
 
 #[async_std::main]
@@ -15,7 +16,7 @@ async fn main() -> tide::Result<()> {
     let mut tera = Tera::new("templates/**/*")?;
     tera.autoescape_on(vec!["html"]);
 
-    let (sender, receiver) = broadcast_channel::broadcast(16);
+    let (sender, receiver) = channel::bounded(16);
     let mut app = tide::with_state(State {
         tera: tera,
         sender: sender,
@@ -46,7 +47,7 @@ async fn main() -> tide::Result<()> {
         println!("message: {}", data);
 
         let sender = &req.state().sender;
-        sender.broadcast(42).await?;
+        sender.send(42).await?;
 
         Ok("ok")
     });

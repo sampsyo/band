@@ -312,7 +312,6 @@ name = "band"
 version = "0.1.0"
 dependencies = [
  "async-std",
- "broadcast-channel",
  "serde",
  "tera",
  "tide",
@@ -410,15 +409,6 @@ dependencies = [
  "fastrand",
  "futures-lite",
  "once_cell",
-]
-
-[[package]]
-name = "broadcast-channel"
-version = "0.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44f25e10a64b2a41f8be28a31790f76cd0696f7c5e966e6f6f3a6b4717df7e2f"
-dependencies = [
- "async-mutex",
 ]
 
 [[package]]
