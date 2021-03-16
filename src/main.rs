@@ -22,6 +22,8 @@ async fn main() -> tide::Result<()> {
         tera.render_response("chat.html", &context! {})
     });
 
+    app.at("/static").serve_dir("static/")?;
+
     app.listen("localhost:8080").await?;
     Ok(())
 }
