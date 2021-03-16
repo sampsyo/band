@@ -17,9 +17,9 @@
 </body>
 <script>
 window.addEventListener("DOMContentLoaded", (event) => {
-    console.log("ready");
+    const outEl = document.getElementById("output");
 
-    const source = new EventSource("/sse");
+    const source = new EventSource("/chat");
     source.addEventListener('open', (event) => {
         console.log("open", event);
     });
@@ -29,6 +29,9 @@ window.addEventListener("DOMContentLoaded", (event) => {
 
     source.addEventListener('message', (event) => {
         console.log("message", event);
+        const line = document.createElement("p");
+        line.textContent = event.data;
+        outEl.appendChild(line);
     });
 });
 </script>
