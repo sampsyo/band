@@ -2,11 +2,15 @@ use tera::Tera;
 use tide_tera::prelude::*;
 use broadcaster::BroadcastChannel;
 use futures_util::StreamExt;
+use std::sync::{Arc, Mutex};
+
+type Message = String;
 
 #[derive(Clone)]
 struct State {
     tera: Tera,
-    chan: BroadcastChannel<String>,
+    chan: BroadcastChannel<Message>,
+    history: Arc<Mutex<Vec<Message>>>,
 }
 
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
@@ -23,8 +27,13 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let data: String = req.body_json().await?;
     println!("message: {}", data);
 
+    // Send to connected clients.
     let chan = &req.state().chan;
     chan.send(&data).await?;
+
+    // Record message in the history.
+    let mut hist = req.state().history.lock().unwrap();
+    hist.push(data);
 
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
@@ -44,6 +53,7 @@ async fn main() -> tide::Result<()> {
     let mut app = tide::with_state(State {
         tera: tera,
         chan: BroadcastChannel::new(),
+        history: Arc::new(Mutex::new(vec![])),
     });
 
     app.at("/chat").get(tide::sse::endpoint(chat_stream));
