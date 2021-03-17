@@ -12,6 +12,10 @@ body {
 #output {
     flex-grow: 1;
     margin: 1rem;
+
+    display: flex;
+    flex-direction: column-reverse;
+    overflow-y: scroll;
 }
 
 #send {
@@ -24,6 +28,6 @@ body {
     width: 100%;
 }
 
-#output p {
+#messages p {
     margin: 0;
 }

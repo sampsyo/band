@@ -1,5 +1,5 @@
 window.addEventListener('DOMContentLoaded', async (event) => {
-    const outEl = document.getElementById("output")!;
+    const outEl = document.getElementById("messages")!;
     const formEl = document.getElementById("send")! as HTMLFormElement;
     const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
 
