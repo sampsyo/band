@@ -20,8 +20,8 @@ struct State {
 }
 
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
+    let room_id = req.param("room")?;
     let mut chan = {
-        let room_id = req.param("room")?;
         let rooms = req.state().rooms.lock().unwrap();
         let room = rooms.get(room_id).unwrap();  // FIXME 404
         room.chan.clone()
@@ -37,11 +37,11 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
 
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let data: String = req.body_json().await?;
-    println!("message: {}", data);
+    let room_id = req.param("room")?;
+    println!("message in {}: {}", room_id, data);
 
     // Send to connected clients.
     let chan = {
-        let room_id = req.param("room")?;
         let rooms = &mut req.state().rooms.lock().unwrap();
         let room = &mut rooms.get_mut(room_id).unwrap();  // FIXME 404
         room.chan.clone()
@@ -49,7 +49,6 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     chan.send(&data).await?;
 
     // Record message in the history.
-    let room_id = req.param("room")?;
     let rooms = &mut req.state().rooms.lock().unwrap();
     let room = &mut rooms.get_mut(room_id).unwrap();  // FIXME 404
     room.history.push(data);
