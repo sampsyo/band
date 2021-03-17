@@ -8,24 +8,21 @@ use std::collections::HashMap;
 use nanoid::nanoid;
 
 type Message = String;
-
-struct Room {
-    chan: BroadcastChannel<Message>,
-    history: Vec<Message>,
-}
+type Channel = BroadcastChannel<Message>;
 
 #[derive(Clone)]
 struct State {
     tera: Tera,
-    rooms: Arc<Mutex<HashMap<String, Room>>>,
+    chans: Arc<Mutex<HashMap<String, Channel>>>,
     db: sled::Db,
 }
 
-fn get_room<'a>(map: &'a HashMap<String, Room>, key: &str) -> tide::Result<&'a Room>
+fn get_chan(map: &HashMap<String, Channel>, key: &str) -> tide::Result<Channel>
 {
-    map.get(key).ok_or(
+    let chan = map.get(key).ok_or(
         tide::Error::from_str(404, "unknown room")
-    )
+    )?;
+    Ok(chan.clone())
 }
 
 fn msgs_tree(db: &sled::Db, room_id: &str) -> sled::Result<sled::Tree> {
@@ -37,9 +34,8 @@ fn msgs_tree(db: &sled::Db, room_id: &str) -> sled::Result<sled::Tree> {
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
     let room_id = req.param("room")?;
     let mut chan = {
-        let rooms = req.state().rooms.lock().unwrap();
-        let room = get_room(&rooms, room_id)?;
-        room.chan.clone()
+        let chans = req.state().chans.lock().unwrap();
+        get_chan(&chans, room_id)?
     };
 
     while let Some(msg) = chan.next().await {
@@ -57,9 +53,8 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
 
     // Send to connected clients.
     let chan = {
-        let rooms = &mut req.state().rooms.lock().unwrap();
-        let room = get_room(&rooms, room_id)?;
-        room.chan.clone()
+        let chans = req.state().chans.lock().unwrap();
+        get_chan(&chans, room_id)?
     };
     chan.send(&data).await?;
 
@@ -77,8 +72,8 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
 
     // Make sure we stop with a 404 if the room does not exist.
     {
-        let rooms = req.state().rooms.lock().unwrap();
-        get_room(&rooms, room_id)?;
+        let chans = req.state().chans.lock().unwrap();
+        get_chan(&chans, room_id)?;
     }
 
     let tera = &req.state().tera;
@@ -101,11 +96,8 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
 
 async fn make_chat(req: tide::Request<State>) -> tide::Result {
     let room_id = nanoid!(8);
-    let mut rooms = req.state().rooms.lock().unwrap();
-    rooms.insert(room_id.to_string(), Room {
-        chan: BroadcastChannel::new(),
-        history: vec![],
-    });
+    let mut chans = req.state().chans.lock().unwrap();
+    chans.insert(room_id.to_string(), BroadcastChannel::new());
     Ok(tide::Redirect::new(format!("/{}", room_id)).into())
 }
 
@@ -119,7 +111,7 @@ async fn main() -> tide::Result<()> {
     tide::log::start();
     let mut app = tide::with_state(State {
         tera: tera,
-        rooms: Arc::new(Mutex::new(HashMap::new())),
+        chans: Arc::new(Mutex::new(HashMap::new())),
         db: db,
     });
 
