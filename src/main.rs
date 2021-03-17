@@ -18,6 +18,7 @@ struct Room {
 struct State {
     tera: Tera,
     rooms: Arc<Mutex<HashMap<String, Room>>>,
+    db: sled::Db,
 }
 
 fn get_room<'a>(map: &'a HashMap<String, Room>, key: &str) -> tide::Result<&'a Room>
@@ -27,11 +28,10 @@ fn get_room<'a>(map: &'a HashMap<String, Room>, key: &str) -> tide::Result<&'a R
     )
 }
 
-fn get_room_mut<'a>(map: &'a mut HashMap<String, Room>, key: &str) -> tide::Result<&'a mut Room>
-{
-    map.get_mut(key).ok_or(
-        tide::Error::from_str(404, "unknown room")
-    )
+fn msgs_tree(db: &sled::Db, room_id: &str) -> sled::Result<sled::Tree> {
+    // this could surely be made more efficient using byte manipulation instead of format!
+    let tree_name = format!("msgs:{}", room_id);
+    db.open_tree(tree_name)
 }
 
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
@@ -63,10 +63,11 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     };
     chan.send(&data).await?;
 
-    // Record message in the history.
-    let rooms = &mut req.state().rooms.lock().unwrap();
-    let room = &mut get_room_mut(rooms, room_id)?;
-    room.history.push(data);
+    // Record message in the history database.
+    let db = &req.state().db;
+    let msgs = msgs_tree(&db, room_id)?;
+    let msg_id = db.generate_id()?.to_be_bytes();
+    msgs.insert(msg_id, data.as_bytes())?;
 
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
@@ -89,15 +90,18 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
 async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
     let room_id = req.param("room")?;
 
-    let rooms = &req.state().rooms.lock().unwrap();
-    let room = &get_room(rooms, room_id)?;
+    let db = &req.state().db;
+    let msgs = msgs_tree(&db, room_id)?;
+    let all_msgs: Result<Vec<_>, _> = msgs.iter().values().map(|r| {
+        r.map(|data| String::from_utf8(data.to_vec()).unwrap())
+    }).collect();
 
-    Ok(Body::from_json(&room.history)?)
+    Ok(Body::from_json(&all_msgs?)?)
 }
 
 async fn make_chat(req: tide::Request<State>) -> tide::Result {
-    let mut rooms = req.state().rooms.lock().unwrap();
     let room_id = nanoid!(8);
+    let mut rooms = req.state().rooms.lock().unwrap();
     rooms.insert(room_id.to_string(), Room {
         chan: BroadcastChannel::new(),
         history: vec![],
@@ -107,14 +111,16 @@ async fn make_chat(req: tide::Request<State>) -> tide::Result {
 
 #[async_std::main]
 async fn main() -> tide::Result<()> {
-    tide::log::start();
-
     let mut tera = Tera::new("templates/**/*")?;
     tera.autoescape_on(vec!["html"]);
 
+    let db = sled::open("band.db")?;
+
+    tide::log::start();
     let mut app = tide::with_state(State {
         tera: tera,
         rooms: Arc::new(Mutex::new(HashMap::new())),
+        db: db,
     });
 
     app.at("/:room/chat").get(tide::sse::endpoint(chat_stream));
