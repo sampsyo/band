@@ -11,7 +11,7 @@ body {
 
 #output {
     flex-grow: 1;
-    margin: 1rem;
+    margin: 1rem 1rem 0 1rem;
 
     display: flex;
     flex-direction: column-reverse;
@@ -21,7 +21,7 @@ body {
 #send {
     display: block;
     flex: none;
-    margin: 1rem;
+    margin: 0 1rem 1rem 1rem;
 }
 
 #send input {
