@@ -19,11 +19,25 @@ struct State {
     rooms: Arc<Mutex<HashMap<String, Room>>>,
 }
 
+fn get_room<'a>(map: &'a HashMap<String, Room>, key: &str) -> tide::Result<&'a Room>
+{
+    map.get(key).ok_or(
+        tide::Error::from_str(404, "not found")
+    )
+}
+
+fn get_room_mut<'a>(map: &'a mut HashMap<String, Room>, key: &str) -> tide::Result<&'a mut Room>
+{
+    map.get_mut(key).ok_or(
+        tide::Error::from_str(404, "not found")
+    )
+}
+
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
     let room_id = req.param("room")?;
     let mut chan = {
         let rooms = req.state().rooms.lock().unwrap();
-        let room = rooms.get(room_id).unwrap();  // FIXME 404
+        let room = get_room(&rooms, room_id)?;
         room.chan.clone()
     };
 
@@ -43,14 +57,14 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     // Send to connected clients.
     let chan = {
         let rooms = &mut req.state().rooms.lock().unwrap();
-        let room = &mut rooms.get_mut(room_id).unwrap();  // FIXME 404
+        let room = get_room(&rooms, room_id)?;
         room.chan.clone()
     };
     chan.send(&data).await?;
 
     // Record message in the history.
     let rooms = &mut req.state().rooms.lock().unwrap();
-    let room = &mut rooms.get_mut(room_id).unwrap();  // FIXME 404
+    let room = &mut get_room_mut(rooms, room_id)?;
     room.history.push(data);
 
     Ok(tide::Response::new(tide::StatusCode::Ok))
@@ -64,8 +78,9 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
 
 async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
     let room_id = req.param("room")?;
+
     let rooms = &req.state().rooms.lock().unwrap();
-    let room = &rooms.get(room_id).unwrap();  // FIXME 404
+    let room = &get_room(rooms, room_id)?;
 
     Ok(Body::from_json(&room.history)?)
 }
