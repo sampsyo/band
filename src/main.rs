@@ -18,13 +18,16 @@ struct State {
 }
 
 impl State {
-    fn get_chan(&self, room_id: &str) -> tide::Result<Channel>
-    {
-        let chans = self.chans.lock().unwrap();
-        let chan = chans.get(room_id).ok_or(
-            tide::Error::from_str(404, "unknown room")
-        )?;
-        Ok(chan.clone())
+    fn get_chan(&self, room_id: &str) -> Channel {
+        let chans = &mut self.chans.lock().unwrap();
+        match chans.get(room_id) {
+            Some(c) => c.clone(),
+            None => {
+                let chan = BroadcastChannel::new();
+                chans.insert(room_id.to_string(), chan.clone());
+                chan
+            },
+        }
     }
 
     fn msgs_tree(&self, room_id: &str) -> sled::Result<sled::Tree> {
@@ -32,11 +35,31 @@ impl State {
         let tree_name = format!("msgs:{}", room_id);
         self.db.open_tree(tree_name)
     }
+
+    fn create_room(&self, room_id: &str) -> sled::Result<()> {
+        let rooms = self.db.open_tree("rooms")?;
+        rooms.insert(room_id, vec![])?;  // Currently just for existence.
+        Ok(())
+    }
+
+    fn room_exists(&self, room_id: &str) -> sled::Result<bool> {
+        let rooms = self.db.open_tree("rooms")?;
+        rooms.contains_key(room_id)
+    }
+
+    fn room_or_404(&self, room_id: &str) -> tide::Result<()> {
+        if self.room_exists(room_id)? {
+            Ok(())
+        } else {
+            Err(tide::Error::from_str(404, "unknown room"))
+        }
+    }
 }
 
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
     let room_id = req.param("room")?;
-    let mut chan = req.state().get_chan(room_id)?;
+    req.state().room_or_404(room_id)?;
+    let mut chan = req.state().get_chan(room_id);
 
     while let Some(msg) = chan.next().await {
         println!("recv'd {}", msg);
@@ -49,10 +72,11 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let data: String = req.body_json().await?;
     let room_id = req.param("room")?;
+    req.state().room_or_404(room_id)?;
     println!("message in {}: {}", room_id, data);
 
     // Send to connected clients.
-    let chan = req.state().get_chan(room_id)?;
+    let chan = req.state().get_chan(room_id);
     chan.send(&data).await?;
 
     // Record message in the history database.
@@ -67,7 +91,7 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
     let room_id = req.param("room")?;
 
     // Make sure we stop with a 404 if the room does not exist.
-    req.state().get_chan(room_id)?;
+    req.state().room_or_404(room_id)?;
 
     let tera = &req.state().tera;
     tera.render_response("chat.html", &context! {
@@ -88,8 +112,8 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
 
 async fn make_chat(req: tide::Request<State>) -> tide::Result {
     let room_id = nanoid!(8);
-    let mut chans = req.state().chans.lock().unwrap();
-    chans.insert(room_id.to_string(), BroadcastChannel::new());
+    req.state().create_room(&room_id)?;
+    req.state().get_chan(&room_id);  // Eagerly materialize the channel.
     Ok(tide::Redirect::new(format!("/{}", room_id)).into())
 }
 
