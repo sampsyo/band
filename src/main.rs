@@ -126,9 +126,9 @@ async fn main() -> tide::Result<()> {
 
     tide::log::start();
     let mut app = tide::with_state(State {
-        tera: tera,
+        tera,
         chans: Arc::new(Mutex::new(HashMap::new())),
-        db: db,
+        db,
     });
 
     app.at("/:room/chat").get(tide::sse::endpoint(chat_stream));
