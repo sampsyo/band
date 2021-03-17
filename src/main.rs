@@ -17,13 +17,15 @@ struct State {
     db: sled::Db,
 }
 
-fn get_chan(state: &State, room_id: &str) -> tide::Result<Channel>
-{
-    let chans = state.chans.lock().unwrap();
-    let chan = chans.get(room_id).ok_or(
-        tide::Error::from_str(404, "unknown room")
-    )?;
-    Ok(chan.clone())
+impl State {
+    fn get_chan(&self, room_id: &str) -> tide::Result<Channel>
+    {
+        let chans = self.chans.lock().unwrap();
+        let chan = chans.get(room_id).ok_or(
+            tide::Error::from_str(404, "unknown room")
+        )?;
+        Ok(chan.clone())
+    }
 }
 
 fn msgs_tree(db: &sled::Db, room_id: &str) -> sled::Result<sled::Tree> {
@@ -34,7 +36,7 @@ fn msgs_tree(db: &sled::Db, room_id: &str) -> sled::Result<sled::Tree> {
 
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
     let room_id = req.param("room")?;
-    let mut chan = get_chan(&req.state(), room_id)?;
+    let mut chan = req.state().get_chan(room_id)?;
 
     while let Some(msg) = chan.next().await {
         println!("recv'd {}", msg);
@@ -50,7 +52,7 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     println!("message in {}: {}", room_id, data);
 
     // Send to connected clients.
-    let chan = get_chan(&req.state(), room_id)?;
+    let chan = req.state().get_chan(room_id)?;
     chan.send(&data).await?;
 
     // Record message in the history database.
@@ -66,7 +68,7 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
     let room_id = req.param("room")?;
 
     // Make sure we stop with a 404 if the room does not exist.
-    get_chan(&req.state(), room_id)?;
+    req.state().get_chan(room_id)?;
 
     let tera = &req.state().tera;
     tera.render_response("chat.html", &context! {
