@@ -9,13 +9,13 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         outEl.appendChild(line);
     }
 
-    let resp = await fetch('/history');
+    let resp = await fetch('/TODO/history');
     let data = await resp.json();
     for (const msg of data) {
         addMessage(msg);
     }
 
-    const source = new EventSource("/chat");
+    const source = new EventSource("/TODO/chat");
     source.addEventListener('open', (event) => {
         console.log("open", event);
     });
@@ -30,7 +30,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     formEl.addEventListener('submit', (event) => {
         const body = msgEl.value;
 
-        fetch('/send', {
+        fetch('/TODO/send', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
