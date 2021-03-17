@@ -80,7 +80,9 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
     }
 
     let tera = &req.state().tera;
-    tera.render_response("chat.html", &context! {})
+    tera.render_response("chat.html", &context! {
+        "room_id" => room_id
+    })
 }
 
 async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {

@@ -1,3 +1,6 @@
+// Passed as a global from the backend.
+declare const BAND_ROOM_ID: string;
+
 window.addEventListener('DOMContentLoaded', async (event) => {
     const outEl = document.getElementById("messages")!;
     const formEl = document.getElementById("send")! as HTMLFormElement;
@@ -9,13 +12,13 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         outEl.appendChild(line);
     }
 
-    let resp = await fetch('/TODO/history');
+    let resp = await fetch(`/${BAND_ROOM_ID}/history`);
     let data = await resp.json();
     for (const msg of data) {
         addMessage(msg);
     }
 
-    const source = new EventSource("/TODO/chat");
+    const source = new EventSource(`/${BAND_ROOM_ID}/chat`);
     source.addEventListener('open', (event) => {
         console.log("open", event);
     });
@@ -30,7 +33,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     formEl.addEventListener('submit', (event) => {
         const body = msgEl.value;
 
-        fetch('/TODO/send', {
+        fetch(`/${BAND_ROOM_ID}/send`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
