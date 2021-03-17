@@ -22,14 +22,14 @@ struct State {
 fn get_room<'a>(map: &'a HashMap<String, Room>, key: &str) -> tide::Result<&'a Room>
 {
     map.get(key).ok_or(
-        tide::Error::from_str(404, "not found")
+        tide::Error::from_str(404, "unknown room")
     )
 }
 
 fn get_room_mut<'a>(map: &'a mut HashMap<String, Room>, key: &str) -> tide::Result<&'a mut Room>
 {
     map.get_mut(key).ok_or(
-        tide::Error::from_str(404, "not found")
+        tide::Error::from_str(404, "unknown room")
     )
 }
 
@@ -71,7 +71,14 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
 }
 
 async fn chat_page(req: tide::Request<State>) -> tide::Result {
-    // FIXME include room key; 404 is missing
+    let room_id = req.param("room")?;
+
+    // Make sure we stop with a 404 if the room does not exist.
+    {
+        let rooms = req.state().rooms.lock().unwrap();
+        get_room(&rooms, room_id)?;
+    }
+
     let tera = &req.state().tera;
     tera.render_response("chat.html", &context! {})
 }
