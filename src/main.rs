@@ -5,6 +5,7 @@ use broadcaster::BroadcastChannel;
 use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use nanoid::nanoid;
 
 type Message = String;
 
@@ -96,7 +97,7 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
 
 async fn make_chat(req: tide::Request<State>) -> tide::Result {
     let mut rooms = req.state().rooms.lock().unwrap();
-    let room_id = "TODO";
+    let room_id = nanoid!(8);
     rooms.insert(room_id.to_string(), Room {
         chan: BroadcastChannel::new(),
         history: vec![],
