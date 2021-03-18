@@ -54,6 +54,19 @@ impl State {
             Err(tide::Error::from_str(404, "unknown room"))
         }
     }
+
+    async fn send_message(&self, room_id: &str, msg: &Message) -> tide::Result<()> {
+        // Send to connected clients.
+        let chan = self.get_chan(room_id);
+        chan.send(&msg).await?;
+
+        // Record message in the history database.
+        let msgs = self.msgs_tree(room_id)?;
+        let msg_id = self.db.generate_id()?.to_be_bytes();
+        msgs.insert(msg_id, msg.as_bytes())?;
+
+        Ok(())
+    }
 }
 
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
@@ -73,17 +86,9 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let data: String = req.body_json().await?;
     let room_id = req.param("room")?;
     req.state().room_or_404(room_id)?;
+
     log::debug!("received message in {}: {}", room_id, data);
-
-    // Send to connected clients.
-    let chan = req.state().get_chan(room_id);
-    chan.send(&data).await?;
-
-    // Record message in the history database.
-    let msgs = req.state().msgs_tree(room_id)?;
-    let msg_id = req.state().db.generate_id()?.to_be_bytes();
-    msgs.insert(msg_id, data.as_bytes())?;
-
+    req.state().send_message(&room_id, &data).await?;
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 
