@@ -68,11 +68,19 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     });
 
     formEl.addEventListener('submit', (event) => {
-        // Fire and forget; no need to await.
-        send({
-            body: msgEl.value,
-            user: username,
-        });
+        const text = msgEl.value;
+
+        if (text.startsWith('/name')) {
+            // Update username.
+            username = text.split(' ')[1];
+        } else {
+            // Fire and forget; no need to await.
+            send({
+                body: text,
+                user: username,
+            });
+        }
+
         formEl.reset();
         event.preventDefault();
     });
