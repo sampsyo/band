@@ -56,3 +56,9 @@ body {
     transition: max-height 0.2s linear,
         background-color 4.0s ease-in-out;
 }
+
+#messages p .user {
+    font-weight: bold;
+    color: #ccc;
+    margin-right: 0.8em;
+}

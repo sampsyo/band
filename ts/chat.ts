@@ -28,13 +28,21 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
     function addMessage(msg: Message, fresh: boolean) {
         const line = document.createElement("p");
-
         if (fresh) {
             line.classList.add("fresh");
             setTimeout(() => line.classList.add("done"), 0);
         }
 
-        line.textContent = msg.body;
+        const user = document.createElement("span");
+        user.classList.add("user");
+        line.appendChild(user);
+        user.textContent = `${msg.user}:`;
+
+        const body = document.createElement("span");
+        body.classList.add("body");
+        line.appendChild(body);
+        body.textContent = msg.body;
+
         outEl.appendChild(line);
         outContainerEl.scrollTop = 0;
     }
