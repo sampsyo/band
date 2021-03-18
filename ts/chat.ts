@@ -3,6 +3,7 @@ declare const BAND_ROOM_ID: string;
 
 window.addEventListener('DOMContentLoaded', async (event) => {
     const outEl = document.getElementById("messages")!;
+    const outContainerEl = document.getElementById("output")!;
     const formEl = document.getElementById("send")! as HTMLFormElement;
     const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
 
@@ -16,6 +17,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
         line.textContent = msg;
         outEl.appendChild(line);
+        outContainerEl.scrollTop = 0;
     }
 
     let resp = await fetch(`/${BAND_ROOM_ID}/history`);
