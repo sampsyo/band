@@ -322,6 +322,7 @@ dependencies = [
  "futures-util",
  "nanoid",
  "serde",
+ "serde_json",
  "sled",
  "tera",
  "tide",

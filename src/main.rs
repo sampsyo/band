@@ -6,8 +6,15 @@ use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use nanoid::nanoid;
+use std::time::SystemTime;
+use serde::{Serialize, Deserialize};
 
-type Message = String;
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Message {
+    body: String,
+    ts: SystemTime,
+}
+
 type Channel = BroadcastChannel<Message>;
 
 #[derive(Clone)]
@@ -63,7 +70,9 @@ impl State {
         // Record message in the history database.
         let msgs = self.msgs_tree(room_id)?;
         let msg_id = self.db.generate_id()?.to_be_bytes();
-        msgs.insert(msg_id, msg.as_bytes())?;
+
+        let data = serde_json::to_string(&msg)?;
+        msgs.insert(msg_id, data.as_bytes())?;
 
         Ok(())
     }
@@ -75,8 +84,9 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
     let mut chan = req.state().get_chan(room_id);
 
     while let Some(msg) = chan.next().await {
-        log::debug!("emitting message: {}", msg);
-        sender.send("message", msg, None).await?;
+        log::debug!("emitting message: {:?}", msg);
+        let data = serde_json::to_string(&msg)?;
+        sender.send("message", data, None).await?;
     }
 
     Ok(())
@@ -87,8 +97,13 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let room_id = req.param("room")?;
     req.state().room_or_404(room_id)?;
 
-    log::debug!("received message in {}: {}", room_id, data);
-    req.state().send_message(&room_id, &data).await?;
+    let msg = Message {
+        body: data,
+        ts: SystemTime::now(),
+    };
+
+    log::debug!("received message in {}: {:?}", room_id, msg);
+    req.state().send_message(&room_id, &msg).await?;
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 
@@ -109,7 +124,7 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
 
     let msgs = req.state().msgs_tree(room_id)?;
     let all_msgs: Result<Vec<_>, _> = msgs.iter().values().map(|r| {
-        r.map(|data| String::from_utf8(data.to_vec()).unwrap())
+        r.map(|data| serde_json::from_slice::<Message>(&data).unwrap())
     }).collect();
 
     Ok(Body::from_json(&all_msgs?)?)

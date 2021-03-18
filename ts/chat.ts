@@ -1,13 +1,18 @@
 // Passed as a global from the backend.
 declare const BAND_ROOM_ID: string;
 
+interface Message {
+    body: string;
+    ts: any;
+};
+
 window.addEventListener('DOMContentLoaded', async (event) => {
     const outEl = document.getElementById("messages")!;
     const outContainerEl = document.getElementById("output")!;
     const formEl = document.getElementById("send")! as HTMLFormElement;
     const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
 
-    function addMessage(msg: string, fresh: boolean) {
+    function addMessage(msg: Message, fresh: boolean) {
         const line = document.createElement("p");
 
         if (fresh) {
@@ -15,7 +20,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             setTimeout(() => line.classList.add("done"), 0);
         }
 
-        line.textContent = msg;
+        line.textContent = msg.body;
         outEl.appendChild(line);
         outContainerEl.scrollTop = 0;
     }
@@ -35,7 +40,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     });
     source.addEventListener('message', (event) => {
         console.log("message", event);
-        addMessage(event.data, true);
+        addMessage(JSON.parse(event.data), true);
     });
 
     formEl.addEventListener('submit', (event) => {
