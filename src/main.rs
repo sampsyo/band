@@ -15,6 +15,11 @@ struct Message {
     ts: DateTime<Utc>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct IncomingMessage {
+    body: String,
+}
+
 type Channel = BroadcastChannel<Message>;
 
 #[derive(Clone)]
@@ -62,7 +67,12 @@ impl State {
         }
     }
 
-    async fn send_message(&self, room_id: &str, msg: &Message) -> tide::Result<()> {
+    async fn send_message(&self, room_id: &str, incoming: IncomingMessage) -> tide::Result<()> {
+        let msg = Message {
+            body: incoming.body,
+            ts: Utc::now(),
+        };
+
         // Send to connected clients.
         let chan = self.get_chan(room_id);
         chan.send(&msg).await?;
@@ -93,17 +103,12 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
 }
 
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
-    let data: String = req.body_json().await?;
+    let msg: IncomingMessage = req.body_json().await?;
     let room_id = req.param("room")?;
     req.state().room_or_404(room_id)?;
 
-    let msg = Message {
-        body: data,
-        ts: Utc::now(),
-    };
-
     log::debug!("received message in {}: {:?}", room_id, msg);
-    req.state().send_message(&room_id, &msg).await?;
+    req.state().send_message(&room_id, msg).await?;
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 

@@ -1,10 +1,23 @@
 // Passed as a global from the backend.
 declare const BAND_ROOM_ID: string;
 
-interface Message {
+interface OutgoingMessage {
     body: string;
+}
+
+interface Message extends OutgoingMessage {
     ts: string;
-};
+}
+
+async function send(msg: OutgoingMessage) {
+    await fetch(`/${BAND_ROOM_ID}/send`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(msg),
+    });
+}
 
 window.addEventListener('DOMContentLoaded', async (event) => {
     const outEl = document.getElementById("messages")!;
@@ -25,8 +38,8 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         outContainerEl.scrollTop = 0;
     }
 
-    let resp = await fetch(`/${BAND_ROOM_ID}/history`);
-    let data = await resp.json();
+    const resp = await fetch(`/${BAND_ROOM_ID}/history`);
+    const data = await resp.json();
     for (const msg of data) {
         addMessage(msg, false);
     }
@@ -45,15 +58,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
     formEl.addEventListener('submit', (event) => {
         const body = msgEl.value;
-
-        fetch(`/${BAND_ROOM_ID}/send`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body),
-        });
-
+        send({body});  // Fire and forget; no need to await.
         formEl.reset();
         event.preventDefault();
     });
