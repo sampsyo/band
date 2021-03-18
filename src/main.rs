@@ -6,13 +6,13 @@ use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use nanoid::nanoid;
-use std::time::SystemTime;
 use serde::{Serialize, Deserialize};
+use chrono::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Message {
     body: String,
-    ts: SystemTime,
+    ts: DateTime<Utc>,
 }
 
 type Channel = BroadcastChannel<Message>;
@@ -99,7 +99,7 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
 
     let msg = Message {
         body: data,
-        ts: SystemTime::now(),
+        ts: Utc::now(),
     };
 
     log::debug!("received message in {}: {:?}", room_id, msg);
