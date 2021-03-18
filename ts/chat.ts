@@ -3,6 +3,7 @@ declare const BAND_ROOM_ID: string;
 
 interface OutgoingMessage {
     body: string;
+    user: string;
 }
 
 interface Message extends OutgoingMessage {
@@ -58,7 +59,8 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
     formEl.addEventListener('submit', (event) => {
         const body = msgEl.value;
-        send({body});  // Fire and forget; no need to await.
+        const user = "anonymous";  // TODO
+        send({body, user});  // Fire and forget; no need to await.
         formEl.reset();
         event.preventDefault();
     });

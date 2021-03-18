@@ -12,12 +12,14 @@ use chrono::prelude::*;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Message {
     body: String,
+    user: String,
     ts: DateTime<Utc>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct IncomingMessage {
     body: String,
+    user: String,
 }
 
 type Channel = BroadcastChannel<Message>;
@@ -70,6 +72,7 @@ impl State {
     async fn send_message(&self, room_id: &str, incoming: IncomingMessage) -> tide::Result<()> {
         let msg = Message {
             body: incoming.body,
+            user: incoming.user,
             ts: Utc::now(),
         };
 
