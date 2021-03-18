@@ -6,8 +6,14 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     const formEl = document.getElementById("send")! as HTMLFormElement;
     const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
 
-    function addMessage(msg: string) {
+    function addMessage(msg: string, fresh: boolean) {
         const line = document.createElement("p");
+
+        if (fresh) {
+            line.classList.add("fresh");
+            setTimeout(() => line.classList.add("done"), 100);
+        }
+
         line.textContent = msg;
         outEl.appendChild(line);
     }
@@ -15,7 +21,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     let resp = await fetch(`/${BAND_ROOM_ID}/history`);
     let data = await resp.json();
     for (const msg of data) {
-        addMessage(msg);
+        addMessage(msg, false);
     }
 
     const source = new EventSource(`/${BAND_ROOM_ID}/chat`);
@@ -27,7 +33,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     });
     source.addEventListener('message', (event) => {
         console.log("message", event);
-        addMessage(event.data);
+        addMessage(event.data, true);
     });
 
     formEl.addEventListener('submit', (event) => {

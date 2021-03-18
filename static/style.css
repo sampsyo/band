@@ -29,5 +29,14 @@ body {
 }
 
 #messages p {
-    margin: 0;
+    margin: 0.2rem 0;
+}
+
+#messages p.fresh {
+    max-height: 0;
+}
+
+#messages p.fresh.done {
+    max-height: 3ex;
+    transition: max-height 0.2s linear;
 }
