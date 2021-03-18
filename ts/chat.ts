@@ -10,6 +10,11 @@ interface Message extends OutgoingMessage {
     ts: string;
 }
 
+interface SystemMessage {
+    body: string;
+    system: true;
+}
+
 async function send(msg: OutgoingMessage) {
     await fetch(`/${BAND_ROOM_ID}/send`, {
         method: 'POST',
@@ -28,17 +33,21 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
     let username: string = "anonymous";
 
-    function addMessage(msg: Message, fresh: boolean) {
+    function addMessage(msg: Message | SystemMessage, fresh: boolean) {
         const line = document.createElement("p");
         if (fresh) {
             line.classList.add("fresh");
             setTimeout(() => line.classList.add("done"), 0);
         }
 
-        const user = document.createElement("span");
-        user.classList.add("user");
-        line.appendChild(user);
-        user.textContent = `${msg.user}:`;
+        if ("system" in msg) {
+            line.classList.add("system");
+        } else {
+            const user = document.createElement("span");
+            user.classList.add("user");
+            line.appendChild(user);
+            user.textContent = `${msg.user}:`;
+        }
 
         const body = document.createElement("span");
         body.classList.add("body");
@@ -73,6 +82,10 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         if (text.startsWith('/name')) {
             // Update username.
             username = text.split(' ')[1];
+            addMessage({
+                body: `you are now known as ${username}`,
+                system: true,
+            }, true);
         } else {
             // Fire and forget; no need to await.
             send({
