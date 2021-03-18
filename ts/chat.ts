@@ -3,7 +3,7 @@ declare const BAND_ROOM_ID: string;
 
 interface Message {
     body: string;
-    ts: any;
+    ts: string;
 };
 
 window.addEventListener('DOMContentLoaded', async (event) => {
