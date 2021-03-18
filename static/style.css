@@ -11,7 +11,7 @@ body {
 
 #output {
     flex-grow: 1;
-    margin: 1rem 1rem 0 1rem;
+    margin: 0;
 
     display: flex;
     flex-direction: column-reverse;
@@ -21,31 +21,38 @@ body {
 #send {
     display: block;
     flex: none;
-    margin: 0.2rem 0 0 0;
+    margin: 0;
 }
 
 #send input {
     width: 100%;
     font-size: 120%;
-    border: 1px solid #ccc;
-    border-width: 1px 0 0 0;
     padding: 0.4rem;
+    margin: 0;
+
+    border-width: 1px 0 0 0;
+    border-style: solid;
+    border-color: #ccc;
 }
 
 #send input:focus {
     outline: none;
-    border-color: #ecc;
+    border-color: #FF9F80;
 }
 
 #messages p {
-    margin: 0.2rem 0;
+    margin: 0;
+    padding: 0.3rem 1rem;
 }
 
 #messages p.fresh {
     max-height: 0;
+    background-color: #EFFAB4;
 }
 
 #messages p.fresh.done {
     max-height: 3ex;
-    transition: max-height 0.2s linear;
+    background-color: transparent;
+    transition: max-height 0.2s linear,
+        background-color 4.0s ease-in-out;
 }

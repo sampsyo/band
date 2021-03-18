@@ -11,7 +11,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
         if (fresh) {
             line.classList.add("fresh");
-            setTimeout(() => line.classList.add("done"), 100);
+            setTimeout(() => line.classList.add("done"), 0);
         }
 
         line.textContent = msg;
