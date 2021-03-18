@@ -1,6 +1,9 @@
 // Passed as a global from the backend.
 declare const BAND_ROOM_ID: string;
 
+const USERNAME_CMD = '/name';
+const DEFAULT_USERNAME = 'anonymous';
+
 interface OutgoingMessage {
     body: string;
     user: string;
@@ -25,13 +28,19 @@ async function send(msg: OutgoingMessage) {
     });
 }
 
+function getUser() {
+    return localStorage.getItem('username') || DEFAULT_USERNAME;
+}
+
+function setUser(user: string) {
+    return localStorage.setItem('username', user);
+}
+
 window.addEventListener('DOMContentLoaded', async (event) => {
     const outEl = document.getElementById("messages")!;
     const outContainerEl = document.getElementById("output")!;
     const formEl = document.getElementById("send")! as HTMLFormElement;
     const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
-
-    let username: string = "anonymous";
 
     function addMessage(msg: Message | SystemMessage, fresh: boolean) {
         const line = document.createElement("p");
@@ -79,18 +88,19 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     formEl.addEventListener('submit', (event) => {
         const text = msgEl.value;
 
-        if (text.startsWith('/name')) {
+        if (text.startsWith(USERNAME_CMD)) {
             // Update username.
-            username = text.split(' ')[1];
+            const newname = text.split(' ')[1];
+            setUser(newname);
             addMessage({
-                body: `you are now known as ${username}`,
+                body: `you are now known as ${newname}`,
                 system: true,
             }, true);
         } else {
             // Fire and forget; no need to await.
             send({
                 body: text,
-                user: username,
+                user: getUser(),
             });
         }
 
