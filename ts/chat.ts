@@ -26,6 +26,8 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     const formEl = document.getElementById("send")! as HTMLFormElement;
     const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
 
+    let username: string = "anonymous";
+
     function addMessage(msg: Message, fresh: boolean) {
         const line = document.createElement("p");
         if (fresh) {
@@ -66,9 +68,11 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     });
 
     formEl.addEventListener('submit', (event) => {
-        const body = msgEl.value;
-        const user = "anonymous";  // TODO
-        send({body, user});  // Fire and forget; no need to await.
+        // Fire and forget; no need to await.
+        send({
+            body: msgEl.value,
+            user: username,
+        });
         formEl.reset();
         event.preventDefault();
     });
