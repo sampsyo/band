@@ -1,5 +1,5 @@
 use tera::Tera;
-use tide::Body;
+use tide::{Body, log};
 use tide_tera::prelude::*;
 use broadcaster::BroadcastChannel;
 use futures_util::StreamExt;
@@ -62,7 +62,7 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
     let mut chan = req.state().get_chan(room_id);
 
     while let Some(msg) = chan.next().await {
-        println!("recv'd {}", msg);
+        log::debug!("emitting message: {}", msg);
         sender.send("message", msg, None).await?;
     }
 
@@ -73,7 +73,7 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let data: String = req.body_json().await?;
     let room_id = req.param("room")?;
     req.state().room_or_404(room_id)?;
-    println!("message in {}: {}", room_id, data);
+    log::debug!("received message in {}: {}", room_id, data);
 
     // Send to connected clients.
     let chan = req.state().get_chan(room_id);
@@ -124,7 +124,7 @@ async fn main() -> tide::Result<()> {
 
     let db = sled::open("band.db")?;
 
-    tide::log::start();
+    log::with_level(log::LevelFilter::Debug);
     let mut app = tide::with_state(State {
         tera,
         chans: Arc::new(Mutex::new(HashMap::new())),
