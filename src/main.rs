@@ -8,18 +8,7 @@ use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use chrono::prelude::*;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct Message {
-    body: String,
-    user: String,
-    ts: DateTime<Utc>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Session {
-    user: String,
-    ts: DateTime<Utc>,
-}
+mod store;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct IncomingMessage {
@@ -32,7 +21,7 @@ struct IncomingSession {
     user: String,
 }
 
-type Channel = BroadcastChannel<Message>;
+type Channel = BroadcastChannel<store::Message>;
 
 #[derive(Clone)]
 struct State {
@@ -90,7 +79,7 @@ impl State {
     }
 
     async fn send_message(&self, room_id: &str, incoming: IncomingMessage) -> tide::Result<()> {
-        let msg = Message {
+        let msg = store::Message {
             body: incoming.body,
             user: incoming.user,
             ts: Utc::now(),
@@ -111,7 +100,7 @@ impl State {
     }
 
     fn create_session(&self, room_id: &str, incoming: IncomingSession) -> tide::Result<String> {
-        let session = Session {
+        let session = store::Session {
             user: incoming.user,
             ts: Utc::now(),
         };
@@ -166,7 +155,7 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
 
     let msgs = req.state().message_tree(room_id)?;
     let all_msgs: Result<Vec<_>, _> = msgs.iter().values().map(|r| {
-        r.map(|data| serde_json::from_slice::<Message>(&data).unwrap())
+        r.map(|data| serde_json::from_slice::<store::Message>(&data).unwrap())
     }).collect();
 
     Ok(Body::from_json(&all_msgs?)?)
