@@ -67,11 +67,22 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         outContainerEl.scrollTop = 0;
     }
 
-    const resp = await fetch(`/${BAND_ROOM_ID}/history`);
-    const data = await resp.json();
-    for (const msg of data) {
+    const history_fut = fetch(`/${BAND_ROOM_ID}/history`);
+    const session_fut = fetch(`/${BAND_ROOM_ID}/session`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({user: getUser()}),
+    });
+
+    const history_data = await (await history_fut).json();
+    for (const msg of history_data) {
         addMessage(msg, false);
     }
+
+    const session_id = await (await session_fut).text();
+    console.log(`started session ${session_id}`);
 
     const source = new EventSource(`/${BAND_ROOM_ID}/chat`);
     source.addEventListener('open', (event) => {

@@ -321,6 +321,7 @@ dependencies = [
  "broadcaster",
  "chrono",
  "futures-util",
+ "harsh",
  "nanoid",
  "serde",
  "serde_json",
@@ -973,6 +974,12 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
+
+[[package]]
+name = "harsh"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84cb861429b0d399a7620c0086ba47c035ba209fb1aae314380ebd9e95d8d459"
 
 [[package]]
 name = "hermit-abi"
