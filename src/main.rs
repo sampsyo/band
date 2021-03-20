@@ -5,7 +5,6 @@ use broadcaster::BroadcastChannel;
 use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
-use nanoid::nanoid;
 use serde::{Serialize, Deserialize};
 use chrono::prelude::*;
 
@@ -17,15 +16,15 @@ struct Message {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct IncomingMessage {
-    body: String,
-    user: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 struct Session {
     user: String,
     ts: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct IncomingMessage {
+    body: String,
+    user: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -68,10 +67,13 @@ impl State {
         self.db.open_tree(tree_name)
     }
 
-    fn create_room(&self, room_id: &str) -> sled::Result<()> {
+    fn create_room(&self) -> sled::Result<String> {
+        let id = self.db.generate_id()?;
+        let id_str = self.harsh.encode(&[id]);  // TODO: Actually use numbers as IDs??
+
         let rooms = self.db.open_tree("rooms")?;
-        rooms.insert(room_id, vec![])?;  // Currently just for existence.
-        Ok(())
+        rooms.insert(&id_str, vec![])?;  // Currently just for existence.
+        Ok(id_str)
     }
 
     fn room_exists(&self, room_id: &str) -> sled::Result<bool> {
@@ -171,8 +173,7 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
 }
 
 async fn make_chat(req: tide::Request<State>) -> tide::Result {
-    let room_id = nanoid!(8);
-    req.state().create_room(&room_id)?;
+    let room_id = req.state().create_room()?;
     req.state().get_chan(&room_id);  // Eagerly materialize the channel.
     Ok(tide::Redirect::new(format!("/{}", room_id)).into())
 }

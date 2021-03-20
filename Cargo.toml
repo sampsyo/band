@@ -11,7 +11,6 @@ tide-tera = "0.2"
 tera = "1.7"
 broadcaster = "1.0"
 futures-util = "0.3"
-nanoid = "0.3"
 sled = "0.34"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
