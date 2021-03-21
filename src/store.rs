@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use chrono::prelude::*;
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Message {
@@ -14,3 +15,14 @@ pub struct Session {
     pub ts: DateTime<Utc>,
 }
 
+#[derive(Clone)]
+pub struct Store {
+    pub db: sled::Db,
+}
+
+impl Store {
+    pub fn new<P: AsRef<Path>>(path: P) -> sled::Result<Store> {
+        let db = sled::open(path)?;
+        Ok(Store { db })
+    }
+}

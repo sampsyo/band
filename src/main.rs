@@ -27,7 +27,7 @@ type Channel = BroadcastChannel<store::Message>;
 struct State {
     tera: Tera,
     chans: Arc<Mutex<HashMap<String, Channel>>>,
-    db: sled::Db,
+    store: store::Store,
     harsh: harsh::Harsh,
 }
 
@@ -47,26 +47,26 @@ impl State {
     fn message_tree(&self, room_id: &str) -> sled::Result<sled::Tree> {
         // this could surely be made more efficient using byte manipulation instead of format!
         let tree_name = format!("msgs:{}", room_id);
-        self.db.open_tree(tree_name)
+        self.store.db.open_tree(tree_name)
     }
 
     fn session_tree(&self, room_id: &str) -> sled::Result<sled::Tree> {
         // as above
         let tree_name = format!("sess:{}", room_id);
-        self.db.open_tree(tree_name)
+        self.store.db.open_tree(tree_name)
     }
 
     fn create_room(&self) -> sled::Result<String> {
-        let id = self.db.generate_id()?;
+        let id = self.store.db.generate_id()?;
         let id_str = self.harsh.encode(&[id]);  // TODO: Actually use numbers as IDs??
 
-        let rooms = self.db.open_tree("rooms")?;
+        let rooms = self.store.db.open_tree("rooms")?;
         rooms.insert(&id_str, vec![])?;  // Currently just for existence.
         Ok(id_str)
     }
 
     fn room_exists(&self, room_id: &str) -> sled::Result<bool> {
-        let rooms = self.db.open_tree("rooms")?;
+        let rooms = self.store.db.open_tree("rooms")?;
         rooms.contains_key(room_id)
     }
 
@@ -91,7 +91,7 @@ impl State {
 
         // Record message in the history database.
         let msgs = self.message_tree(room_id)?;
-        let msg_id = self.db.generate_id()?.to_be_bytes();
+        let msg_id = self.store.db.generate_id()?.to_be_bytes();
 
         let data = serde_json::to_vec(&msg)?;
         msgs.insert(msg_id, data)?;
@@ -105,7 +105,7 @@ impl State {
             ts: Utc::now(),
         };
 
-        let id = self.db.generate_id()?;
+        let id = self.store.db.generate_id()?;
         let sessions = self.session_tree(room_id)?;
         let data = serde_json::to_vec(&session)?;
         sessions.insert(id.to_be_bytes(), data)?;
@@ -181,13 +181,11 @@ async fn main() -> tide::Result<()> {
     let mut tera = Tera::new("templates/**/*")?;
     tera.autoescape_on(vec!["html"]);
 
-    let db = sled::open("band.db")?;
-
     log::with_level(log::LevelFilter::Debug);
     let mut app = tide::with_state(State {
         tera,
         chans: Arc::new(Mutex::new(HashMap::new())),
-        db,
+        store: store::Store::new("band.db")?,
         harsh: harsh::Harsh::default(),
     });
 
