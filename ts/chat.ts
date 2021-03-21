@@ -18,8 +18,8 @@ interface SystemMessage {
     system: true;
 }
 
-async function send(msg: OutgoingMessage) {
-    await fetch(`/${BAND_ROOM_ID}/send`, {
+async function send(sess: string, msg: OutgoingMessage) {
+    await fetch(`/${BAND_ROOM_ID}/session/${sess}/message`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -81,6 +81,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         addMessage(msg, false);
     }
 
+    // TODO Try reusing old session first.
     const session_id = await (await session_fut).text();
     console.log(`started session ${session_id}`);
 
@@ -109,7 +110,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             }, true);
         } else {
             // Fire and forget; no need to await.
-            send({
+            send(session_id, {
                 body: text,
                 user: getUser(),
             });

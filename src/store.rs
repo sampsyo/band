@@ -8,6 +8,7 @@ pub type Id = u64;
 pub struct Message {
     pub body: String,
     pub user: String,
+    pub session: Id,
     pub ts: DateTime<Utc>,
 }
 
@@ -61,6 +62,11 @@ impl Store {
     pub fn room_exists(&self, room: Id) -> sled::Result<bool> {
         let rooms = self.room_tree()?;
         rooms.contains_key(room.to_be_bytes())
+    }
+
+    pub fn session_exists(&self, room: Id, session: Id) -> sled::Result<bool> {
+        let sessions = self.session_tree(room)?;
+        sessions.contains_key(session.to_be_bytes())
     }
 
     pub fn add_session(&self, room: Id, session: &Session) -> sled::Result<Id> {

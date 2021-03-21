@@ -53,11 +53,21 @@ impl State {
         }
     }
 
-    async fn send_message(&self, room_id: store::Id, incoming: IncomingMessage) -> tide::Result<()> {
+    fn sess_or_404(&self, room: store::Id, sess_id: &str) -> tide::Result<store::Id> {
+        let id = self.parse_id(&sess_id)?;
+        if self.store.session_exists(room, id)? {
+            Ok(id)
+        } else {
+            Err(tide::Error::from_str(404, "unknown session"))
+        }
+    }
+
+    async fn send_message(&self, room_id: store::Id, session_id: store::Id, incoming: IncomingMessage) -> tide::Result<()> {
         // Record message in the history database.
         let msg = store::Message {
             body: incoming.body,
             user: incoming.user,
+            session: session_id,
             ts: Utc::now(),
         };
         self.store.add_message(room_id, &msg)?;
@@ -94,9 +104,10 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let msg: IncomingMessage = req.body_json().await?;
     let room_id = req.state().room_or_404(req.param("room")?)?;
+    let sess_id = req.state().sess_or_404(room_id, req.param("session")?)?;
 
     log::debug!("received message in {}: {:?}", room_id, msg);
-    req.state().send_message(room_id, msg).await?;
+    req.state().send_message(room_id, sess_id, msg).await?;
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 
@@ -153,9 +164,9 @@ async fn main() -> tide::Result<()> {
 
     app.at("/:room/chat").get(tide::sse::endpoint(chat_stream));
     app.at("/:room").get(chat_page);
-    app.at("/:room/send").post(chat_send);
     app.at("/:room/history").get(chat_history);
     app.at("/:room/session").post(make_session);
+    app.at("/:room/session/:session/message").post(chat_send);
 
     app.at("/new").post(make_chat);
     app.at("/").get(|req: tide::Request<State>| async move {
