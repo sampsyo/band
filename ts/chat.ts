@@ -102,6 +102,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     });
 
     formEl.addEventListener('submit', async (event) => {
+        event.preventDefault();
         const text = msgEl.value;
 
         if (text.startsWith(USERNAME_CMD)) {
@@ -118,6 +119,5 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         }
 
         formEl.reset();
-        event.preventDefault();
     });
 });
