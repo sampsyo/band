@@ -1,6 +1,8 @@
 use serde::{Serialize, Deserialize};
 use chrono::prelude::*;
 use std::path::Path;
+use std::convert::TryInto;
+use std::collections::HashMap;
 
 pub type Id = u64;
 
@@ -34,9 +36,15 @@ fn insert_ser<T: Serialize>(tree: &sled::Tree, id: Id, val: &T) -> sled::Result<
     Ok(())
 }
 
-fn iter_des<T: serde::de::DeserializeOwned>(tree: &sled::Tree) -> impl Iterator<Item=sled::Result<Message>> {
+fn values_des<T: serde::de::DeserializeOwned>(tree: &sled::Tree) -> impl Iterator<Item=sled::Result<T>> {
     tree.iter().values().map(|r| {
         r.map(|data| bincode::deserialize(&data).unwrap())
+    })
+}
+
+fn iter_des<T: serde::de::DeserializeOwned>(tree: &sled::Tree) -> impl Iterator<Item=sled::Result<(Id, T)>> {
+    tree.iter().map(|r| {
+        r.map(|(k, v)| (u64::from_be_bytes((*k).try_into().unwrap()), bincode::deserialize(&v).unwrap()))
     })
 }
 
@@ -91,6 +99,11 @@ impl Store {
 
     pub fn all_messages(&self, room: Id) -> sled::Result<Vec<Message>> {
         let msgs = self.message_tree(room)?;
-        iter_des::<Message>(&msgs).collect()
+        values_des::<Message>(&msgs).collect()
+    }
+
+    pub fn all_sessions(&self, room: Id) -> sled::Result<HashMap<Id, Session>> {
+        let sessions = self.session_tree(room)?;
+        iter_des::<Session>(&sessions).collect()
     }
 }
