@@ -34,6 +34,12 @@ fn insert_ser<T: Serialize>(tree: &sled::Tree, id: Id, val: &T) -> sled::Result<
     Ok(())
 }
 
+fn iter_des<T: serde::de::DeserializeOwned>(tree: &sled::Tree) -> impl Iterator<Item=sled::Result<Message>> {
+    tree.iter().values().map(|r| {
+        r.map(|data| bincode::deserialize(&data).unwrap())
+    })
+}
+
 impl Store {
     pub fn new<P: AsRef<Path>>(path: P) -> sled::Result<Store> {
         let db = sled::open(path)?;
@@ -77,9 +83,6 @@ impl Store {
 
     pub fn all_messages(&self, room_id: Id) -> sled::Result<Vec<Message>> {
         let msgs = self.message_tree(room_id)?;
-        let all_msgs: Result<Vec<_>, _> = msgs.iter().values().map(|r| {
-            r.map(|data| bincode::deserialize::<Message>(&data).unwrap())
-        }).collect();
-        all_msgs
+        iter_des::<Message>(&msgs).collect()
     }
 }
