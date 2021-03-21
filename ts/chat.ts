@@ -29,8 +29,15 @@ function getUser() {
     return localStorage.getItem('username') || DEFAULT_USERNAME;
 }
 
-function setUser(user: string) {
-    return localStorage.setItem('username', user);
+async function setUser(sess: string, user: string) {
+    await fetch(`/${BAND_ROOM_ID}/session/${sess}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({user}),
+    });
+    localStorage.setItem('username', user);
 }
 
 window.addEventListener('DOMContentLoaded', async (event) => {
@@ -94,13 +101,13 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         addMessage(JSON.parse(event.data), true);
     });
 
-    formEl.addEventListener('submit', (event) => {
+    formEl.addEventListener('submit', async (event) => {
         const text = msgEl.value;
 
         if (text.startsWith(USERNAME_CMD)) {
             // Update username.
             const newname = text.split(' ')[1];
-            setUser(newname);
+            await setUser(session_id, newname);
             addMessage({
                 body: `you are now known as ${newname}`,
                 system: true,

@@ -164,6 +164,14 @@ async fn make_session(mut req: tide::Request<State>) -> tide::Result {
     Ok(tide::Response::from(id_str))
 }
 
+async fn update_session(mut req: tide::Request<State>) -> tide::Result {
+    let data: IncomingSession = req.body_json().await?;
+    let room_id = req.state().room_or_404(req.param("room")?)?;
+    let sess_id = req.state().parse_id(req.param("session")?)?;
+    req.state().store.set_user(room_id, sess_id, &data.user)?;
+    Ok(tide::Response::new(tide::StatusCode::Ok))
+}
+
 #[async_std::main]
 async fn main() -> tide::Result<()> {
     let mut tera = Tera::new("templates/**/*")?;
@@ -181,6 +189,7 @@ async fn main() -> tide::Result<()> {
     app.at("/:room").get(chat_page);
     app.at("/:room/history").get(chat_history);
     app.at("/:room/session").post(make_session);
+    app.at("/:room/session/:session").post(update_session);
     app.at("/:room/session/:session/message").post(chat_send);
 
     app.at("/new").post(make_chat);

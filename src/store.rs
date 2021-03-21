@@ -106,4 +106,16 @@ impl Store {
         let sessions = self.session_tree(room)?;
         iter_des::<Session>(&sessions).collect()
     }
+
+    pub fn set_user(&self, room: Id, session: Id, user: &str) -> sled::Result<Option<()>> {
+        let sessions = self.session_tree(room)?;
+        let res = sessions.fetch_and_update(session.to_be_bytes(), |old| {
+            old.map(|data| {
+                let sess: Session = bincode::deserialize(data).unwrap();
+                let new = Session { user: user.to_string(), ..sess };
+                bincode::serialize(&new).unwrap()
+            })
+        })?;
+        Ok(res.map(|_| ()))
+    }
 }
