@@ -317,6 +317,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "harsh",
+ "rand 0.8.3",
  "serde",
  "serde_json",
  "sled",

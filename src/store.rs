@@ -64,19 +64,19 @@ impl Store {
     }
 
     pub fn add_session(&self, room_id: Id, session: &Session) -> sled::Result<Id> {
-        let id = self.db.generate_id()?;
+        let id: u64 = rand::random();  // Unpredictable id.
         insert_ser(&self.session_tree(room_id)?, id, &session)?;
         Ok(id)
     }
 
     pub fn add_message(&self, room_id: Id, msg: &Message) -> sled::Result<Id> {
-        let id = self.db.generate_id()?;
+        let id = self.db.generate_id()?;  // Sequential id.
         insert_ser(&self.message_tree(room_id)?, id, &msg)?;
         Ok(id)
     }
 
     pub fn add_room(&self) -> sled::Result<u64> {
-        let id = self.db.generate_id()?;
+        let id: u64 = rand::random();  // Unpredictable id.
         self.room_tree()?.insert(id.to_be_bytes(), vec![])?;  // Currently just for existence.
         Ok(id)
     }
