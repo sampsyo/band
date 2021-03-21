@@ -134,7 +134,11 @@ async fn make_session(mut req: tide::Request<State>) -> tide::Result {
     let data: IncomingSession = req.body_json().await?;
     let room_id = req.state().room_or_404(req.param("room")?)?;
 
-    let id = req.state().store.create_session(room_id, &data.user)?;
+    let session = store::Session {
+        user: data.user.to_string(),
+        ts: Utc::now(),
+    };
+    let id = req.state().store.add_session(room_id, &session)?;
     let id_str = req.state().harsh.encode(&[id]);
     Ok(tide::Response::from(id_str))
 }

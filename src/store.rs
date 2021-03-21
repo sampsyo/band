@@ -45,14 +45,9 @@ impl Store {
         rooms.contains_key(room_id.to_be_bytes())
     }
 
-    pub fn create_session(&self, room_id: Id, user: &str) -> tide::Result<Id> {
-        let session = Session {
-            user: user.to_string(),
-            ts: Utc::now(),
-        };
-
-        let id = self.db.generate_id()?;
+    pub fn add_session(&self, room_id: Id, session: &Session) -> tide::Result<Id> {
         let sessions = self.session_tree(room_id)?;
+        let id = self.db.generate_id()?;
         let data = serde_json::to_vec(&session)?;
         sessions.insert(id.to_be_bytes(), data)?;
 
