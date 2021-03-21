@@ -29,6 +29,11 @@ fn scoped_id(scope: u8, id: u64) -> [u8; 9] {
     res
 }
 
+fn insert_ser<T: Serialize>(tree: &sled::Tree, id: Id, val: &T) -> tide::Result<()> {
+    tree.insert(id.to_be_bytes(), serde_json::to_vec(&val)?)?;
+    Ok(())
+}
+
 impl Store {
     pub fn new<P: AsRef<Path>>(path: P) -> sled::Result<Store> {
         let db = sled::open(path)?;
@@ -53,29 +58,20 @@ impl Store {
     }
 
     pub fn add_session(&self, room_id: Id, session: &Session) -> tide::Result<Id> {
-        let sessions = self.session_tree(room_id)?;
         let id = self.db.generate_id()?;
-
-        let data = serde_json::to_vec(&session)?;
-        sessions.insert(id.to_be_bytes(), data)?;
-
+        insert_ser(&self.session_tree(room_id)?, id, &session)?;
         Ok(id)
     }
 
     pub fn add_message(&self, room_id: Id, msg: &Message) -> tide::Result<Id> {
-        let msgs = self.message_tree(room_id)?;
-        let msg_id = self.db.generate_id()?;
-
-        let data = serde_json::to_vec(&msg)?;
-        msgs.insert(msg_id.to_be_bytes(), data)?;
-
-        Ok(msg_id)
+        let id = self.db.generate_id()?;
+        insert_ser(&self.message_tree(room_id)?, id, &msg)?;
+        Ok(id)
     }
 
     pub fn add_room(&self) -> sled::Result<u64> {
-        let rooms = self.room_tree()?;
         let id = self.db.generate_id()?;
-        rooms.insert(id.to_be_bytes(), vec![])?;  // Currently just for existence.
+        self.room_tree()?.insert(id.to_be_bytes(), vec![])?;  // Currently just for existence.
         Ok(id)
     }
 
