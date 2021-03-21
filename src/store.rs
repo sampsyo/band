@@ -46,32 +46,32 @@ impl Store {
         Ok(Store { db })
     }
 
-    fn message_tree(&self, room_id: Id) -> sled::Result<sled::Tree> {
-        self.db.open_tree(scoped_id(0, room_id))
+    fn message_tree(&self, room: Id) -> sled::Result<sled::Tree> {
+        self.db.open_tree(scoped_id(0, room))
     }
 
-    fn session_tree(&self, room_id: Id) -> sled::Result<sled::Tree> {
-        self.db.open_tree(scoped_id(1, room_id))
+    fn session_tree(&self, room: Id) -> sled::Result<sled::Tree> {
+        self.db.open_tree(scoped_id(1, room))
     }
 
     fn room_tree(&self) -> sled::Result<sled::Tree> {
         self.db.open_tree([3])
     }
 
-    pub fn room_exists(&self, room_id: Id) -> sled::Result<bool> {
+    pub fn room_exists(&self, room: Id) -> sled::Result<bool> {
         let rooms = self.room_tree()?;
-        rooms.contains_key(room_id.to_be_bytes())
+        rooms.contains_key(room.to_be_bytes())
     }
 
-    pub fn add_session(&self, room_id: Id, session: &Session) -> sled::Result<Id> {
+    pub fn add_session(&self, room: Id, session: &Session) -> sled::Result<Id> {
         let id: u64 = rand::random();  // Unpredictable id.
-        insert_ser(&self.session_tree(room_id)?, id, &session)?;
+        insert_ser(&self.session_tree(room)?, id, &session)?;
         Ok(id)
     }
 
-    pub fn add_message(&self, room_id: Id, msg: &Message) -> sled::Result<Id> {
+    pub fn add_message(&self, room: Id, msg: &Message) -> sled::Result<Id> {
         let id = self.db.generate_id()?;  // Sequential id.
-        insert_ser(&self.message_tree(room_id)?, id, &msg)?;
+        insert_ser(&self.message_tree(room)?, id, &msg)?;
         Ok(id)
     }
 
@@ -81,8 +81,8 @@ impl Store {
         Ok(id)
     }
 
-    pub fn all_messages(&self, room_id: Id) -> sled::Result<Vec<Message>> {
-        let msgs = self.message_tree(room_id)?;
+    pub fn all_messages(&self, room: Id) -> sled::Result<Vec<Message>> {
+        let msgs = self.message_tree(room)?;
         iter_des::<Message>(&msgs).collect()
     }
 }
