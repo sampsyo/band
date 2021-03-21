@@ -4,7 +4,7 @@ use std::path::Path;
 
 pub type Id = u64;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Message {
     pub body: String,
     pub session: Id,
@@ -63,9 +63,12 @@ impl Store {
         rooms.contains_key(room.to_be_bytes())
     }
 
-    pub fn session_exists(&self, room: Id, session: Id) -> sled::Result<bool> {
+    pub fn get_session(&self, room: Id, session: Id) -> sled::Result<Option<Session>> {
         let sessions = self.session_tree(room)?;
-        sessions.contains_key(session.to_be_bytes())
+        let data = sessions.get(session.to_be_bytes())?;
+        Ok(data.map(|d| {
+            bincode::deserialize(&d).unwrap()
+        }))
     }
 
     pub fn add_session(&self, room: Id, session: &Session) -> sled::Result<Id> {

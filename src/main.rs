@@ -10,10 +10,11 @@ use chrono::prelude::*;
 
 mod store;
 
-#[derive(Serialize, Deserialize, Debug)]
-struct IncomingMessage {
+#[derive(Serialize, Debug, Clone)]
+struct OutgoingMessage {
     body: String,
     user: String,
+    ts: DateTime<Utc>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,7 +22,7 @@ struct IncomingSession {
     user: String,
 }
 
-type Channel = BroadcastChannel<store::Message>;
+type Channel = BroadcastChannel<OutgoingMessage>;
 
 #[derive(Clone)]
 struct State {
@@ -53,27 +54,31 @@ impl State {
         }
     }
 
-    fn sess_or_404(&self, room: store::Id, sess_id: &str) -> tide::Result<store::Id> {
+    fn sess_or_404(&self, room: store::Id, sess_id: &str) -> tide::Result<(store::Id, store::Session)> {
         let id = self.parse_id(&sess_id)?;
-        if self.store.session_exists(room, id)? {
-            Ok(id)
-        } else {
-            Err(tide::Error::from_str(404, "unknown session"))
+        match self.store.get_session(room, id)? {
+            Some(s) => Ok((id, s)),
+            None => Err(tide::Error::from_str(404, "unknown session")),
         }
     }
 
-    async fn send_message(&self, room_id: store::Id, session_id: store::Id, body: String) -> tide::Result<()> {
+    async fn send_message(&self, room_id: store::Id, session_id: store::Id, session: &store::Session, body: String) -> tide::Result<()> {
         // Record message in the history database.
         let msg = store::Message {
-            body,
+            body: body.clone(),
             session: session_id,
             ts: Utc::now(),
         };
         self.store.add_message(room_id, &msg)?;
 
         // Send to connected clients.
+        let outgoing = OutgoingMessage {
+            body,
+            user: session.user.clone(),
+            ts: msg.ts,
+        };
         let chan = self.get_chan(room_id);
-        chan.send(&msg).await?;
+        chan.send(&outgoing).await?;
 
         Ok(())
     }
@@ -103,10 +108,10 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let body = req.body_string().await?;
     let room_id = req.state().room_or_404(req.param("room")?)?;
-    let sess_id = req.state().sess_or_404(room_id, req.param("session")?)?;
+    let (sess_id, sess) = req.state().sess_or_404(room_id, req.param("session")?)?;
 
     log::debug!("received message in {}: {:?}", room_id, body);
-    req.state().send_message(room_id, sess_id, body).await?;
+    req.state().send_message(room_id, sess_id, &sess, body).await?;
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 
