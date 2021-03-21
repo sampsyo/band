@@ -312,6 +312,7 @@ name = "band"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "bincode",
  "broadcaster",
  "chrono",
  "futures-util",

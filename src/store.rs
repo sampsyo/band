@@ -30,7 +30,7 @@ fn scoped_id(scope: u8, id: u64) -> [u8; 9] {
 }
 
 fn insert_ser<T: Serialize>(tree: &sled::Tree, id: Id, val: &T) -> sled::Result<()> {
-    tree.insert(id.to_be_bytes(), serde_json::to_vec(&val).unwrap())?;
+    tree.insert(id.to_be_bytes(), bincode::serialize(&val).unwrap())?;
     Ok(())
 }
 
@@ -78,7 +78,7 @@ impl Store {
     pub fn all_messages(&self, room_id: Id) -> sled::Result<Vec<Message>> {
         let msgs = self.message_tree(room_id)?;
         let all_msgs: Result<Vec<_>, _> = msgs.iter().values().map(|r| {
-            r.map(|data| serde_json::from_slice::<Message>(&data).unwrap())
+            r.map(|data| bincode::deserialize::<Message>(&data).unwrap())
         }).collect();
         all_msgs
     }
