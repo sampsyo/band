@@ -52,19 +52,22 @@ class Client {
     /**
      * Resume or start a session in this room, which allows sending messages.
      */
-    public async open_session() {
+    public async open_session(user: string) {
         // TODO Try reusing old session first.
         const res = await fetch(`/${this.room}/session`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({user: this.getUser()}),
+            body: JSON.stringify({user: user}),
         });
         this.session = await res.text();
         console.log(`started session ${this.session}`);
     }
 
+    /**
+     * Send a message. There must be an open session.
+     */
     public async send(msg: string) {
         await fetch(`/${this.room}/session/${this.session}/message`, {
             method: 'POST',
@@ -75,10 +78,9 @@ class Client {
         });
     }
 
-    getUser() {
-        return localStorage.getItem('username') || DEFAULT_USERNAME;
-    }
-
+    /**
+     * Change the current user. There must be an open session.
+     */
     public async setUser(user: string) {
         await fetch(`/${this.room}/session/${this.session}`, {
             method: 'POST',
@@ -87,7 +89,6 @@ class Client {
             },
             body: JSON.stringify({user}),
         });
-        localStorage.setItem('username', user);
 
         this.addMessage({
             body: `you are now known as ${user}`,
@@ -128,8 +129,9 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     }
 
     const client = new Client(BAND_ROOM_ID, addMessage);
-    let connect_fut = client.connect();
-    let session_fut = client.open_session();
+    const connect_fut = client.connect();
+    const user = localStorage.getItem('username') || DEFAULT_USERNAME;
+    const session_fut = client.open_session(user);
     await connect_fut;
     await session_fut;
 
@@ -141,6 +143,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             // Update username.
             const newname = text.split(' ')[1];
             await client.setUser(newname);
+            localStorage.setItem('username', user);
         } else {
             // Fire and forget; no need to await.
             client.send(text);
