@@ -76,13 +76,6 @@ impl State {
     pub fn parse_id(&self, id: &str) -> Result<u64, harsh::Error> {
         Ok(self.harsh.decode(id)?[0])
     }
-
-    pub fn create_room(&self) -> sled::Result<u64> {
-        let rooms = self.store.db.open_tree("rooms")?;
-        let id = self.store.db.generate_id()?;
-        rooms.insert(id.to_be_bytes(), vec![])?;  // Currently just for existence.
-        Ok(id)
-    }
 }
 
 async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> tide::Result<()> {
@@ -129,7 +122,7 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
 }
 
 async fn make_chat(req: tide::Request<State>) -> tide::Result {
-    let room_id = req.state().create_room()?;
+    let room_id = req.state().store.add_room()?;
     req.state().get_chan(room_id);  // Eagerly materialize the channel.
 
     // Redirect to the chat page.

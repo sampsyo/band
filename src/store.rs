@@ -68,4 +68,11 @@ impl Store {
 
         Ok(msg_id)
     }
+
+    pub fn add_room(&self) -> sled::Result<u64> {
+        let rooms = self.db.open_tree("rooms")?;
+        let id = self.db.generate_id()?;
+        rooms.insert(id.to_be_bytes(), vec![])?;  // Currently just for existence.
+        Ok(id)
+    }
 }
