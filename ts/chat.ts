@@ -4,12 +4,9 @@ declare const BAND_ROOM_ID: string;
 const USERNAME_CMD = '/name';
 const DEFAULT_USERNAME = 'anonymous';
 
-interface OutgoingMessage {
+interface Message {
     body: string;
     user: string;
-}
-
-interface Message extends OutgoingMessage {
     ts: string;
 }
 
@@ -18,13 +15,13 @@ interface SystemMessage {
     system: true;
 }
 
-async function send(sess: string, msg: OutgoingMessage) {
+async function send(sess: string, msg: string) {
     await fetch(`/${BAND_ROOM_ID}/session/${sess}/message`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(msg),
+        body: msg,
     });
 }
 
@@ -110,10 +107,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             }, true);
         } else {
             // Fire and forget; no need to await.
-            send(session_id, {
-                body: text,
-                user: getUser(),
-            });
+            send(session_id, text);
         }
 
         formEl.reset();

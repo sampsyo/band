@@ -7,7 +7,6 @@ pub type Id = u64;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Message {
     pub body: String,
-    pub user: String,
     pub session: Id,
     pub ts: DateTime<Utc>,
 }

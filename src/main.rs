@@ -62,11 +62,10 @@ impl State {
         }
     }
 
-    async fn send_message(&self, room_id: store::Id, session_id: store::Id, incoming: IncomingMessage) -> tide::Result<()> {
+    async fn send_message(&self, room_id: store::Id, session_id: store::Id, body: String) -> tide::Result<()> {
         // Record message in the history database.
         let msg = store::Message {
-            body: incoming.body,
-            user: incoming.user,
+            body,
             session: session_id,
             ts: Utc::now(),
         };
@@ -102,12 +101,12 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
 }
 
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
-    let msg: IncomingMessage = req.body_json().await?;
+    let body = req.body_string().await?;
     let room_id = req.state().room_or_404(req.param("room")?)?;
     let sess_id = req.state().sess_or_404(room_id, req.param("session")?)?;
 
-    log::debug!("received message in {}: {:?}", room_id, msg);
-    req.state().send_message(room_id, sess_id, msg).await?;
+    log::debug!("received message in {}: {:?}", room_id, body);
+    req.state().send_message(room_id, sess_id, body).await?;
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 
