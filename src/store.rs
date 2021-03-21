@@ -22,22 +22,25 @@ pub struct Store {
     pub db: sled::Db,
 }
 
+fn scoped_id(scope: u8, id: u64) -> [u8; 9] {
+    let mut res = [0; 9];
+    res[0] = scope;
+    res[1..].clone_from_slice(&id.to_be_bytes());
+    res
+}
+
 impl Store {
     pub fn new<P: AsRef<Path>>(path: P) -> sled::Result<Store> {
         let db = sled::open(path)?;
         Ok(Store { db })
     }
 
-    pub fn message_tree(&self, room_id: Id) -> sled::Result<sled::Tree> {
-        // this could surely be made more efficient using byte manipulation instead of format!
-        let tree_name = format!("msgs:{}", room_id);
-        self.db.open_tree(tree_name)
+    fn message_tree(&self, room_id: Id) -> sled::Result<sled::Tree> {
+        self.db.open_tree(scoped_id(0, room_id))
     }
 
-    pub fn session_tree(&self, room_id: Id) -> sled::Result<sled::Tree> {
-        // as above
-        let tree_name = format!("sess:{}", room_id);
-        self.db.open_tree(tree_name)
+    fn session_tree(&self, room_id: Id) -> sled::Result<sled::Tree> {
+        self.db.open_tree(scoped_id(1, room_id))
     }
 
     pub fn room_exists(&self, room_id: Id) -> sled::Result<bool> {
