@@ -92,8 +92,11 @@ impl State {
         self.harsh.encode(&[id])
     }
 
-    pub fn parse_id(&self, id: &str) -> Result<u64, harsh::Error> {
-        Ok(self.harsh.decode(id)?[0])
+    pub fn parse_id(&self, id: &str) -> tide::Result<u64> {
+        match self.harsh.decode(id) {
+            Ok(data) => Ok(data[0]),
+            Err(_) => Err(tide::Error::from_str(404, "bad id"))
+        }
     }
 }
 
@@ -172,6 +175,12 @@ async fn update_session(mut req: tide::Request<State>) -> tide::Result {
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 
+async fn get_session(req: tide::Request<State>) -> tide::Result<Body> {
+    let room_id = req.state().room_or_404(req.param("room")?)?;
+    let (_, sess) = req.state().sess_or_404(room_id, req.param("session")?)?;
+    tide::Body::from_json(&sess)
+}
+
 #[async_std::main]
 async fn main() -> tide::Result<()> {
     let mut tera = Tera::new("templates/**/*")?;
@@ -188,8 +197,10 @@ async fn main() -> tide::Result<()> {
     app.at("/:room/chat").get(tide::sse::endpoint(chat_stream));
     app.at("/:room").get(chat_page);
     app.at("/:room/history").get(chat_history);
+
     app.at("/:room/session").post(make_session);
     app.at("/:room/session/:session").post(update_session);
+    app.at("/:room/session/:session").get(get_session);
     app.at("/:room/session/:session/message").post(chat_send);
 
     app.at("/new").post(make_chat);
