@@ -32,6 +32,16 @@ struct State {
     harsh: harsh::Harsh,
 }
 
+impl OutgoingMessage {
+    fn new(msg: &store::Message, sess: &store::Session) -> OutgoingMessage {
+        OutgoingMessage {
+            body: msg.body.clone(),
+            user: sess.user.clone(),
+            ts: msg.ts,
+        }
+    }
+}
+
 impl State {
     fn get_chan(&self, room_id: store::Id) -> Channel {
         let chans = &mut self.chans.lock().unwrap();
@@ -65,20 +75,15 @@ impl State {
     async fn send_message(&self, room_id: store::Id, session_id: store::Id, session: &store::Session, body: String) -> tide::Result<()> {
         // Record message in the history database.
         let msg = store::Message {
-            body: body.clone(),
+            body,
             session: session_id,
             ts: Utc::now(),
         };
         self.store.add_message(room_id, &msg)?;
 
         // Send to connected clients.
-        let outgoing = OutgoingMessage {
-            body,
-            user: session.user.clone(),
-            ts: msg.ts,
-        };
-        let chan = self.get_chan(room_id);
-        chan.send(&outgoing).await?;
+        let outgoing = OutgoingMessage::new(&msg, &session);
+        self.get_chan(room_id).send(&outgoing).await?;
 
         Ok(())
     }
