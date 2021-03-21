@@ -24,29 +24,19 @@ class Client {
                                      fresh: boolean) => void,
     ) { }
 
-    public async start() {
-        // Load history & start session.
-        const history_fut = fetch(`/${BAND_ROOM_ID}/history`);
-        const session_fut = fetch(`/${BAND_ROOM_ID}/session`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({user: this.getUser()}),
-        });
-
-        // Populate history.
-        const history_data = await (await history_fut).json();
-        for (const msg of history_data) {
+    /**
+     * Start receiving messages from the room.
+     */
+    public async connect() {
+        // Load history.
+        const res = await fetch(`/${this.room}/history`);
+        const data = await res.json();
+        for (const msg of data) {
             this.addMessage(msg, false);
         }
 
-        // TODO Try reusing old session first.
-        this.session = await (await session_fut).text();
-        console.log(`started session ${this.session}`);
-
         // Listen for new events.
-        const source = new EventSource(`/${BAND_ROOM_ID}/chat`);
+        const source = new EventSource(`/${this.room}/chat`);
         source.addEventListener('open', (event) => {
             console.log("open", event);
         });
@@ -57,6 +47,22 @@ class Client {
             console.log("message", event);
             this.addMessage(JSON.parse(event.data), true);
         });
+    }
+
+    /**
+     * Resume or start a session in this room, which allows sending messages.
+     */
+    public async open_session() {
+        // TODO Try reusing old session first.
+        const res = await fetch(`/${this.room}/session`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({user: this.getUser()}),
+        });
+        this.session = await res.text();
+        console.log(`started session ${this.session}`);
     }
 
     public async send(msg: string) {
@@ -122,7 +128,10 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     }
 
     const client = new Client(BAND_ROOM_ID, addMessage);
-    await client.start();
+    let connect_fut = client.connect();
+    let session_fut = client.open_session();
+    await connect_fut;
+    await session_fut;
 
     formEl.addEventListener('submit', async (event) => {
         event.preventDefault();
