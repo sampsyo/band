@@ -112,13 +112,8 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
 
 async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
     let room_id = req.state().room_or_404(req.param("room")?)?;
-
-    let msgs = req.state().store.message_tree(room_id)?;
-    let all_msgs: Result<Vec<_>, _> = msgs.iter().values().map(|r| {
-        r.map(|data| serde_json::from_slice::<store::Message>(&data).unwrap())
-    }).collect();
-
-    Ok(Body::from_json(&all_msgs?)?)
+    let msgs = req.state().store.all_messages(room_id)?;
+    Ok(Body::from_json(&msgs)?)
 }
 
 async fn make_chat(req: tide::Request<State>) -> tide::Result {

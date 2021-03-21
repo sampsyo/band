@@ -48,6 +48,7 @@ impl Store {
     pub fn add_session(&self, room_id: Id, session: &Session) -> tide::Result<Id> {
         let sessions = self.session_tree(room_id)?;
         let id = self.db.generate_id()?;
+
         let data = serde_json::to_vec(&session)?;
         sessions.insert(id.to_be_bytes(), data)?;
 
@@ -69,5 +70,13 @@ impl Store {
         let id = self.db.generate_id()?;
         rooms.insert(id.to_be_bytes(), vec![])?;  // Currently just for existence.
         Ok(id)
+    }
+
+    pub fn all_messages(&self, room_id: Id) -> sled::Result<Vec<Message>> {
+        let msgs = self.message_tree(room_id)?;
+        let all_msgs: Result<Vec<_>, _> = msgs.iter().values().map(|r| {
+            r.map(|data| serde_json::from_slice::<Message>(&data).unwrap())
+        }).collect();
+        all_msgs
     }
 }
