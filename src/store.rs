@@ -43,8 +43,12 @@ impl Store {
         self.db.open_tree(scoped_id(1, room_id))
     }
 
+    fn room_tree(&self) -> sled::Result<sled::Tree> {
+        self.db.open_tree([3])
+    }
+
     pub fn room_exists(&self, room_id: Id) -> sled::Result<bool> {
-        let rooms = self.db.open_tree("rooms")?;
+        let rooms = self.room_tree()?;
         rooms.contains_key(room_id.to_be_bytes())
     }
 
@@ -69,7 +73,7 @@ impl Store {
     }
 
     pub fn add_room(&self) -> sled::Result<u64> {
-        let rooms = self.db.open_tree("rooms")?;
+        let rooms = self.room_tree()?;
         let id = self.db.generate_id()?;
         rooms.insert(id.to_be_bytes(), vec![])?;  // Currently just for existence.
         Ok(id)
