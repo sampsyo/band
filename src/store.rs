@@ -29,8 +29,8 @@ fn scoped_id(scope: u8, id: u64) -> [u8; 9] {
     res
 }
 
-fn insert_ser<T: Serialize>(tree: &sled::Tree, id: Id, val: &T) -> tide::Result<()> {
-    tree.insert(id.to_be_bytes(), serde_json::to_vec(&val)?)?;
+fn insert_ser<T: Serialize>(tree: &sled::Tree, id: Id, val: &T) -> sled::Result<()> {
+    tree.insert(id.to_be_bytes(), serde_json::to_vec(&val).unwrap())?;
     Ok(())
 }
 
@@ -57,13 +57,13 @@ impl Store {
         rooms.contains_key(room_id.to_be_bytes())
     }
 
-    pub fn add_session(&self, room_id: Id, session: &Session) -> tide::Result<Id> {
+    pub fn add_session(&self, room_id: Id, session: &Session) -> sled::Result<Id> {
         let id = self.db.generate_id()?;
         insert_ser(&self.session_tree(room_id)?, id, &session)?;
         Ok(id)
     }
 
-    pub fn add_message(&self, room_id: Id, msg: &Message) -> tide::Result<Id> {
+    pub fn add_message(&self, room_id: Id, msg: &Message) -> sled::Result<Id> {
         let id = self.db.generate_id()?;
         insert_ser(&self.message_tree(room_id)?, id, &msg)?;
         Ok(id)
