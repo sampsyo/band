@@ -44,34 +44,8 @@ impl State {
         }
     }
 
-    fn message_tree(&self, room_id: &str) -> sled::Result<sled::Tree> {
-        // this could surely be made more efficient using byte manipulation instead of format!
-        let tree_name = format!("msgs:{}", room_id);
-        self.store.db.open_tree(tree_name)
-    }
-
-    fn session_tree(&self, room_id: &str) -> sled::Result<sled::Tree> {
-        // as above
-        let tree_name = format!("sess:{}", room_id);
-        self.store.db.open_tree(tree_name)
-    }
-
-    fn create_room(&self) -> sled::Result<String> {
-        let id = self.store.db.generate_id()?;
-        let id_str = self.harsh.encode(&[id]);  // TODO: Actually use numbers as IDs??
-
-        let rooms = self.store.db.open_tree("rooms")?;
-        rooms.insert(&id_str, vec![])?;  // Currently just for existence.
-        Ok(id_str)
-    }
-
-    fn room_exists(&self, room_id: &str) -> sled::Result<bool> {
-        let rooms = self.store.db.open_tree("rooms")?;
-        rooms.contains_key(room_id)
-    }
-
     fn room_or_404(&self, room_id: &str) -> tide::Result<()> {
-        if self.room_exists(room_id)? {
+        if self.store.room_exists(room_id)? {
             Ok(())
         } else {
             Err(tide::Error::from_str(404, "unknown room"))
@@ -90,7 +64,7 @@ impl State {
         chan.send(&msg).await?;
 
         // Record message in the history database.
-        let msgs = self.message_tree(room_id)?;
+        let msgs = self.store.message_tree(room_id)?;
         let msg_id = self.store.db.generate_id()?.to_be_bytes();
 
         let data = serde_json::to_vec(&msg)?;
@@ -99,18 +73,13 @@ impl State {
         Ok(())
     }
 
-    fn create_session(&self, room_id: &str, incoming: IncomingSession) -> tide::Result<String> {
-        let session = store::Session {
-            user: incoming.user,
-            ts: Utc::now(),
-        };
-
+    pub fn create_room(&self) -> sled::Result<String> {
         let id = self.store.db.generate_id()?;
-        let sessions = self.session_tree(room_id)?;
-        let data = serde_json::to_vec(&session)?;
-        sessions.insert(id.to_be_bytes(), data)?;
+        let id_str = self.harsh.encode(&[id]);  // TODO: Actually use numbers as IDs??
 
-        Ok(self.harsh.encode(&[id]))
+        let rooms = self.store.db.open_tree("rooms")?;
+        rooms.insert(&id_str, vec![])?;  // Currently just for existence.
+        Ok(id_str)
     }
 }
 
@@ -153,7 +122,7 @@ async fn chat_page(req: tide::Request<State>) -> tide::Result {
 async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
     let room_id = req.param("room")?;
 
-    let msgs = req.state().message_tree(room_id)?;
+    let msgs = req.state().store.message_tree(room_id)?;
     let all_msgs: Result<Vec<_>, _> = msgs.iter().values().map(|r| {
         r.map(|data| serde_json::from_slice::<store::Message>(&data).unwrap())
     }).collect();
@@ -172,8 +141,9 @@ async fn make_session(mut req: tide::Request<State>) -> tide::Result {
     let room_id = req.param("room")?;
     req.state().room_or_404(room_id)?;
 
-    let id = req.state().create_session(&room_id, data)?;
-    Ok(tide::Response::from(id))
+    let id = req.state().store.create_session(&room_id, &data.user)?;
+    let id_str = req.state().harsh.encode(&[id]);
+    Ok(tide::Response::from(id_str))
 }
 
 #[async_std::main]
