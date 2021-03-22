@@ -50,10 +50,31 @@ class Client {
     }
 
     /**
-     * Resume or start a session in this room, which allows sending messages.
+     * Try to resume an old session for this room, returning the current
+     * username if the existing session is still valid.
      */
-    public async open_session(user: string) {
-        // TODO Try reusing old session first.
+    async resume_session(): Promise<string | null> {
+        const old_sess = localStorage.getItem(`session:${this.room}`);
+        if (!old_sess) {
+            return null;
+        }
+
+        let res;
+        try {
+            res = await fetch(`/${this.room}/session/${old_sess}`);
+        } catch (e) {
+            return null;
+        }
+        const sess_data = await res.json();
+
+        this.session = old_sess;
+        return sess_data.user;
+    }
+
+    /**
+     * Establish a brand-new session with a given username.
+     */
+    async new_session(user: string) {
         const res = await fetch(`/${this.room}/session`, {
             method: 'POST',
             headers: {
@@ -61,8 +82,24 @@ class Client {
             },
             body: JSON.stringify({user: user}),
         });
-        this.session = await res.text();
-        console.log(`started session ${this.session}`);
+        const new_sess = await res.text();
+
+        localStorage.setItem(`session:${this.room}`, new_sess);
+        this.session = new_sess;
+    }
+
+    /**
+     * Resume or start a session in this room, which allows sending messages.
+     */
+    public async open_session(user: string) {
+        // Try reusing an old session, if any exists.
+        const old_user = await this.resume_session();
+        if (old_user) {
+            console.log(`resumed session ${this.session} as ${old_user}`);
+        } else {
+            await this.new_session(user);
+            console.log(`started session ${this.session} as ${user}`);
+        }
     }
 
     /**
