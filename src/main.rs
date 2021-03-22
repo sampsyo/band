@@ -12,6 +12,7 @@ mod store;
 
 #[derive(Serialize, Debug, Clone)]
 struct OutgoingMessage {
+    id: String,
     body: String,
     user: String,
     ts: DateTime<Utc>,
@@ -30,16 +31,6 @@ struct State {
     chans: Arc<Mutex<HashMap<store::Id, Channel>>>,
     store: store::Store,
     harsh: harsh::Harsh,
-}
-
-impl OutgoingMessage {
-    fn new(msg: &store::Message, sess: &store::Session) -> OutgoingMessage {
-        OutgoingMessage {
-            body: msg.body.clone(),
-            user: sess.user.clone(),
-            ts: msg.ts,
-        }
-    }
 }
 
 impl State {
@@ -72,6 +63,15 @@ impl State {
         }
     }
 
+    fn outgoing_message(&self, sess: &store::Session, id: store::Id, msg: &store::Message) -> OutgoingMessage {
+        OutgoingMessage {
+            id: self.fmt_id(id),
+            body: msg.body.clone(),
+            user: sess.user.clone(),
+            ts: msg.ts,
+        }
+    }
+
     async fn send_message(&self, room_id: store::Id, session_id: store::Id, session: &store::Session, body: String) -> tide::Result<()> {
         // Record message in the history database.
         let msg = store::Message {
@@ -79,10 +79,10 @@ impl State {
             session: session_id,
             ts: Utc::now(),
         };
-        self.store.add_message(room_id, &msg)?;
+        let id = self.store.add_message(room_id, &msg)?;
 
         // Send to connected clients.
-        let outgoing = OutgoingMessage::new(&msg, &session);
+        let outgoing = self.outgoing_message(&session, id, &msg);
         self.get_chan(room_id).send(&outgoing).await?;
 
         Ok(())
@@ -138,8 +138,9 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
     let sessions = req.state().store.all_sessions(room_id)?;
     let msgs = req.state().store.iter_messages(room_id)?;
     let outgoing: Result<Vec<_>, _> = msgs.map(|r| {
-        r.map(|msg| {
-            OutgoingMessage::new(&msg, sessions.get(&msg.session).unwrap())
+        r.map(|(id, msg)| {
+            let sess = sessions.get(&msg.session).unwrap();
+            req.state().outgoing_message(&sess, id, &msg)
         })
     }).collect();
     Ok(Body::from_json(&outgoing?)?)

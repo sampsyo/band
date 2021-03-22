@@ -97,9 +97,9 @@ impl Store {
         Ok(id)
     }
 
-    pub fn iter_messages(&self, room: Id) -> sled::Result<impl Iterator<Item=sled::Result<Message>>> {
+    pub fn iter_messages(&self, room: Id) -> sled::Result<impl Iterator<Item=sled::Result<(Id, Message)>>> {
         let msgs = self.message_tree(room)?;
-        Ok(values_des::<Message>(&msgs))
+        Ok(iter_des::<Message>(&msgs))
     }
 
     pub fn all_sessions(&self, room: Id) -> sled::Result<HashMap<Id, Session>> {
