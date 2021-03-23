@@ -67,3 +67,20 @@ body {
     font-weight: bold;
     color: #ccc;
 }
+
+#messages p .vote {
+    display: none;
+    color: #FF9F80;
+
+    background: none;
+    border: none;
+    font-size: 24px;
+
+    position: absolute;
+    margin-top: -30px;
+    right: 10px;
+}
+
+#messages p:hover .vote {
+    display: block;
+}

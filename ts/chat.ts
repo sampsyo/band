@@ -159,8 +159,13 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
             const user = document.createElement("span");
             user.classList.add("user");
-            line.appendChild(user);
             user.textContent = `${msg.user}:`;
+            line.appendChild(user);
+
+            const vote = document.createElement("button");
+            vote.classList.add("vote");
+            vote.textContent = "☆";
+            line.appendChild(vote);
         }
 
         const body = document.createElement("span");
