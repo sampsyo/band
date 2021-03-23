@@ -81,7 +81,7 @@ body {
     right: 10px;
 }
 
-#messages p .vote.voted {
+#messages p.voted .vote {
     color: #FF9F80;
 }
 

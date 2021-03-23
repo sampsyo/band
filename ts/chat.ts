@@ -176,11 +176,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             const vote = document.createElement("button");
             vote.classList.add("vote");
             vote.textContent = "★";
-            vote.addEventListener('click', async (event) => {
-                console.log(`voting for ${msg.id}`);
-                await client.vote(msg.id, true);
-                vote.classList.add("voted");
-            });
+            vote.addEventListener('click', handleVote);
             line.appendChild(vote);
         }
 
@@ -191,6 +187,14 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
         outEl.appendChild(line);
         outContainerEl.scrollTop = 0;
+    }
+
+    async function handleVote(event: Event) {
+        const msg = (event.target as Element).parentElement!;
+        const id = msg.dataset['id']!;
+        console.log(`voting for ${id}`);
+        await client.vote(id, true);
+        msg.classList.add("voted");
     }
 
     const client = new Client(BAND_ROOM_ID, addMessage);
