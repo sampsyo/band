@@ -85,6 +85,6 @@ body {
     color: #FF9F80;
 }
 
-#messages p:hover .vote {
+#messages p:hover .vote, #messages p:not([data-votes="0"]) .vote {
     display: block;
 }
