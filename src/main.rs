@@ -63,6 +63,23 @@ impl State {
         }
     }
 
+    fn get_session(&self, req: &tide::Request<State>, room: store::Id) -> tide::Result<Option<(store::Id, store::Session)>> {
+        match req.header("Session") {
+            Some(hdr) => {
+                let id = self.parse_id(&hdr.as_str())?;
+                Ok(self.store.get_session(room, id)?.map(|s| (id, s)))
+            },
+            None => Ok(None),
+        }
+    }
+
+    fn require_session(&self, req: &tide::Request<State>, room: store::Id) -> tide::Result<(store::Id, store::Session)> {
+        match self.get_session(&req, room)? {
+            Some(v) => Ok(v),
+            None => Err(tide::Error::from_str(403, "invalid session")),
+        }
+    }
+
     fn outgoing_message(&self, sess: &store::Session, id: store::Id, msg: &store::Message) -> OutgoingMessage {
         OutgoingMessage {
             id: self.fmt_id(id),
@@ -116,7 +133,7 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let body = req.body_string().await?;
     let room_id = req.state().room_or_404(req.param("room")?)?;
-    let (sess_id, sess) = req.state().sess_or_404(room_id, req.header("Session")?)?;
+    let (sess_id, sess) = req.state().require_session(&req, room_id)?;
 
     log::debug!("received message in {}: {:?}", room_id, body);
     req.state().send_message(room_id, sess_id, &sess, body).await?;
@@ -187,7 +204,7 @@ async fn set_vote(mut req: tide::Request<State>) -> tide::Result {
     let vote = body.trim() != "0";
 
     let room_id = req.state().room_or_404(req.param("room")?)?;
-    let (_, sess) = req.state().sess_or_404(room_id, req.param("session")?)?;
+    let (sess_id, _) = req.state().sess_or_404(room_id, req.param("session")?)?;
     let msg_id = req.state().parse_id(req.param("message")?)?;  // TODO 404
 
     log::debug!("received vote in {}: {} for {}", room_id, vote, msg_id);

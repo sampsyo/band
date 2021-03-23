@@ -106,7 +106,7 @@ class Client {
      * Send a message. There must be an open session.
      */
     public async send(msg: string) {
-        await fetch(`/${this.room}/session/${this.session}/message`, {
+        await fetch(`/${this.room}/message`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
