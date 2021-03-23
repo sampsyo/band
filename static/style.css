@@ -70,7 +70,7 @@ body {
 
 #messages p .vote {
     display: none;
-    color: #FF9F80;
+    color: #ccc;
 
     background: none;
     border: none;
@@ -79,6 +79,10 @@ body {
     position: absolute;
     margin-top: -30px;
     right: 10px;
+}
+
+#messages p .vote.voted {
+    color: #FF9F80;
 }
 
 #messages p:hover .vote {

@@ -137,6 +137,17 @@ class Client {
             system: true,
         }, true);
     }
+
+    /**
+     * Vote for a message. There must be an open session.
+     */
+    public async vote(msgId: string, vote: boolean) {
+        await fetch(`/${this.room}/message/${msgId}/vote`, {
+            method: 'POST',
+            headers: { 'Session': this.session! },
+            body: vote ? "1" : "0",
+        });
+    }
 }
 
 window.addEventListener('DOMContentLoaded', async (event) => {
@@ -164,7 +175,12 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
             const vote = document.createElement("button");
             vote.classList.add("vote");
-            vote.textContent = "☆";
+            vote.textContent = "★";
+            vote.addEventListener('click', async (event) => {
+                console.log(`voting for ${msg.id}`);
+                await client.vote(msg.id, true);
+                vote.classList.add("voted");
+            });
             line.appendChild(vote);
         }
 
