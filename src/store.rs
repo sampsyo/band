@@ -31,20 +31,25 @@ fn scoped_id(scope: u8, id: u64) -> [u8; 9] {
     res
 }
 
+fn pair_id(a: u64, b: u64) -> [u8; 16] {
+    let mut res = [0; 16];
+    res[0..8].clone_from_slice(&a.to_be_bytes());
+    res[8..16].clone_from_slice(&b.to_be_bytes());
+    res
+}
+
 fn insert_ser<T: Serialize>(tree: &sled::Tree, id: Id, val: &T) -> sled::Result<()> {
     tree.insert(id.to_be_bytes(), bincode::serialize(&val).unwrap())?;
     Ok(())
 }
 
-fn values_des<T: serde::de::DeserializeOwned>(tree: &sled::Tree) -> impl Iterator<Item=sled::Result<T>> {
-    tree.iter().values().map(|r| {
-        r.map(|data| bincode::deserialize(&data).unwrap())
-    })
+fn to_id(bytes: sled::IVec) -> Id {
+    u64::from_be_bytes((*bytes).try_into().unwrap())
 }
 
 fn iter_des<T: serde::de::DeserializeOwned>(tree: &sled::Tree) -> impl Iterator<Item=sled::Result<(Id, T)>> {
     tree.iter().map(|r| {
-        r.map(|(k, v)| (u64::from_be_bytes((*k).try_into().unwrap()), bincode::deserialize(&v).unwrap()))
+        r.map(|(k, v)| (to_id(k), bincode::deserialize(&v).unwrap()))
     })
 }
 
@@ -52,6 +57,10 @@ impl Store {
     pub fn new<P: AsRef<Path>>(path: P) -> sled::Result<Store> {
         let db = sled::open(path)?;
         Ok(Store { db })
+    }
+
+    fn room_tree(&self) -> sled::Result<sled::Tree> {
+        self.db.open_tree([0])
     }
 
     fn message_tree(&self, room: Id) -> sled::Result<sled::Tree> {
@@ -62,8 +71,8 @@ impl Store {
         self.db.open_tree(scoped_id(1, room))
     }
 
-    fn room_tree(&self) -> sled::Result<sled::Tree> {
-        self.db.open_tree([3])
+    fn vote_tree(&self, room: Id) -> sled::Result<sled::Tree> {
+        self.db.open_tree(scoped_id(2, room))
     }
 
     pub fn room_exists(&self, room: Id) -> sled::Result<bool> {
@@ -117,5 +126,22 @@ impl Store {
             })
         })?;
         Ok(res.map(|_| ()))
+    }
+
+    pub fn set_vote(&self, room: Id, message: Id, session: Id) -> sled::Result<()> {
+        let id = pair_id(message, session);
+        self.vote_tree(room)?.insert(id, vec![])?;
+        Ok(())
+    }
+
+    pub fn reset_vote(&self, room: Id, message: Id, session: Id) -> sled::Result<()> {
+        let id = pair_id(message, session);
+        self.vote_tree(room)?.remove(id)?;
+        Ok(())
+    }
+
+    pub fn iter_votes(&self, room: Id, message: Id) -> sled::Result<impl Iterator<Item=sled::Result<Id>>> {
+        let iter = self.vote_tree(room)?.scan_prefix(&message.to_be_bytes());
+        Ok(iter.keys().map(|r| r.map(to_id) ))
     }
 }
