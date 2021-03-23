@@ -8,6 +8,7 @@ interface Message {
     body: string;
     user: string;
     ts: string;
+    id: string;
 }
 
 interface SystemMessage {
@@ -154,6 +155,8 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         if ("system" in msg) {
             line.classList.add("system");
         } else {
+            line.dataset['id'] = msg.id;
+
             const user = document.createElement("span");
             user.classList.add("user");
             line.appendChild(user);
