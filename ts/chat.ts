@@ -61,7 +61,9 @@ class Client {
 
         let res;
         try {
-            res = await fetch(`/${this.room}/session/${old_sess}`);
+            res = await fetch(`/${this.room}/session`, {
+                headers: { 'Session': old_sess },
+            });
         } catch (e) {
             return null;
         }

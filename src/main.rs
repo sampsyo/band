@@ -55,14 +55,6 @@ impl State {
         }
     }
 
-    fn sess_or_404(&self, room: store::Id, sess_id: &str) -> tide::Result<(store::Id, store::Session)> {
-        let id = self.parse_id(&sess_id)?;
-        match self.store.get_session(room, id)? {
-            Some(s) => Ok((id, s)),
-            None => Err(tide::Error::from_str(404, "unknown session")),
-        }
-    }
-
     fn get_session(&self, req: &tide::Request<State>, room: store::Id) -> tide::Result<Option<(store::Id, store::Session)>> {
         match req.header("Session") {
             Some(hdr) => {
@@ -195,7 +187,7 @@ async fn update_session(mut req: tide::Request<State>) -> tide::Result {
 
 async fn get_session(req: tide::Request<State>) -> tide::Result<Body> {
     let room_id = req.state().room_or_404(req.param("room")?)?;
-    let (_, sess) = req.state().sess_or_404(room_id, req.param("session")?)?;
+    let (_, sess) = req.state().require_session(&req, room_id)?;
     tide::Body::from_json(&sess)
 }
 
@@ -234,8 +226,8 @@ async fn main() -> tide::Result<()> {
     app.at("/:room/history").get(chat_history);
 
     app.at("/:room/session").post(make_session);
+    app.at("/:room/session").get(get_session);
     app.at("/:room/session/:session").post(update_session);
-    app.at("/:room/session/:session").get(get_session);
 
     app.at("/:room/message").post(chat_send);
     app.at("/:room/message/:message/vote").post(set_vote);
