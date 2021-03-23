@@ -192,9 +192,16 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     async function handleVote(event: Event) {
         const msg = (event.target as Element).parentElement!;
         const id = msg.dataset['id']!;
-        console.log(`voting for ${id}`);
-        await client.vote(id, true);
-        msg.classList.add("voted");
+        const voted = msg.classList.contains('voted');
+
+        console.log(`voting ${!voted} for ${id}`);
+        await client.vote(id, !voted);
+
+        if (voted) {
+            msg.classList.remove("voted");
+        } else {
+            msg.classList.add("voted");
+        }
     }
 
     const client = new Client(BAND_ROOM_ID, addMessage);
