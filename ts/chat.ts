@@ -110,6 +110,7 @@ class Client {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Session': this.session!,
             },
             body: msg,
         });
