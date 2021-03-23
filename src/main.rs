@@ -209,9 +209,9 @@ async fn set_vote(mut req: tide::Request<State>) -> tide::Result {
 
     log::debug!("received vote in {}: {} for {}", room_id, vote, msg_id);
     if vote {
-        req.state().store.set_vote(room_id, sess_id, msg_id);
+        req.state().store.set_vote(room_id, sess_id, msg_id)?;
     } else {
-        req.state().store.reset_vote(room_id, sess_id, msg_id);
+        req.state().store.reset_vote(room_id, sess_id, msg_id)?;
     }
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
