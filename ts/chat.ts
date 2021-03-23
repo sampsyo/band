@@ -9,6 +9,7 @@ interface Message {
     user: string;
     ts: string;
     id: string;
+    votes: number;
 }
 
 interface SystemMessage {
@@ -171,8 +172,11 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         } else {
             const l = msgTmpl.cloneNode(true) as HTMLElement;
             l.dataset['id'] = msg.id;
+            l.dataset['votes'] = msg.votes.toString();
             l.querySelector('.user')!.textContent = `${msg.user}:`;
             l.querySelector('.vote')!.addEventListener('click', handleVote);
+            l.querySelector('.vote .count')!.textContent =
+                msg.votes ? msg.votes.toString() : "";
             line = l;
         }
         line.querySelector('.body')!.textContent = msg.body;
@@ -199,6 +203,12 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         } else {
             msg.classList.add("voted");
         }
+
+        const votes = parseInt(msg.dataset['votes']!) +
+            (voted ? -1 : 1);
+        msg.dataset['votes'] = votes.toString();
+        msg.querySelector('.vote .count')!.textContent =
+            votes ? votes.toString() : "";
     }
 
     const client = new Client(BAND_ROOM_ID, addMessage);
