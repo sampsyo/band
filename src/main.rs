@@ -15,6 +15,7 @@ struct OutgoingMessage {
     id: String,
     body: String,
     user: String,
+    votes: usize,
     ts: DateTime<Utc>,
 }
 
@@ -72,12 +73,13 @@ impl State {
         }
     }
 
-    fn outgoing_message(&self, sess: &store::Session, id: store::Id, msg: &store::Message) -> OutgoingMessage {
+    fn outgoing_message(&self, sess: &store::Session, id: store::Id, msg: &store::Message, votes: usize) -> OutgoingMessage {
         OutgoingMessage {
             id: self.fmt_id(id),
             body: msg.body.clone(),
             user: sess.user.clone(),
             ts: msg.ts,
+            votes,
         }
     }
 
@@ -91,7 +93,7 @@ impl State {
         let id = self.store.add_message(room_id, &msg)?;
 
         // Send to connected clients.
-        let outgoing = self.outgoing_message(&session, id, &msg);
+        let outgoing = self.outgoing_message(&session, id, &msg, 0);
         self.get_chan(room_id).send(&outgoing).await?;
 
         Ok(())
@@ -149,7 +151,8 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
     let outgoing: Result<Vec<_>, _> = msgs.map(|r| {
         r.map(|(id, msg)| {
             let sess = sessions.get(&msg.session).unwrap();
-            req.state().outgoing_message(&sess, id, &msg)
+            let votes = req.state().store.count_votes(room_id, id).unwrap();
+            req.state().outgoing_message(&sess, id, &msg, votes)
         })
     }).collect();
     Ok(Body::from_json(&outgoing?)?)

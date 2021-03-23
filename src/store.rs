@@ -140,8 +140,9 @@ impl Store {
         Ok(())
     }
 
-    pub fn iter_votes(&self, room: Id, message: Id) -> sled::Result<impl Iterator<Item=sled::Result<Id>>> {
+    pub fn count_votes(&self, room: Id, message: Id) -> sled::Result<usize> {
+        // Someday, it might be good to store a denormalized count to avoid the scan.
         let iter = self.vote_tree(room)?.scan_prefix(&message.to_be_bytes());
-        Ok(iter.keys().map(|r| r.map(to_id) ))
+        Ok(iter.count())
     }
 }
