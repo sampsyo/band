@@ -150,6 +150,7 @@ async fn chat_history(req: tide::Request<State>) -> tide::Result<Body> {
     let msgs = req.state().store.iter_messages(room_id)?;
     let outgoing: Result<Vec<_>, _> = msgs.map(|r| {
         r.map(|(id, msg)| {
+            // Error handling is not great here (complicated by closure).
             let sess = sessions.get(&msg.session).unwrap();
             let votes = req.state().store.count_votes(room_id, id).unwrap();
             req.state().outgoing_message(&sess, id, &msg, votes)
@@ -204,9 +205,9 @@ async fn set_vote(mut req: tide::Request<State>) -> tide::Result {
 
     log::debug!("received vote in {}: {} for {}", room_id, vote, msg_id);
     if vote {
-        req.state().store.set_vote(room_id, sess_id, msg_id)?;
+        req.state().store.set_vote(room_id, msg_id, sess_id)?;
     } else {
-        req.state().store.reset_vote(room_id, sess_id, msg_id)?;
+        req.state().store.reset_vote(room_id, msg_id, sess_id)?;
     }
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
