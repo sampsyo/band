@@ -182,6 +182,23 @@ async fn get_session(req: tide::Request<State>) -> tide::Result<Body> {
     tide::Body::from_json(&sess)
 }
 
+async fn set_vote(mut req: tide::Request<State>) -> tide::Result {
+    let body = req.body_string().await?;
+    let vote = body.trim() != "0";
+
+    let room_id = req.state().room_or_404(req.param("room")?)?;
+    let (sess_id, sess) = req.state().sess_or_404(room_id, req.param("session")?)?;
+    let msg_id = req.state().parse_id(req.param("message")?)?;  // TODO 404
+
+    log::debug!("received vote in {}: {} for {}", room_id, vote, msg_id);
+    if vote {
+        req.state().store.set_vote(room_id, sess_id, msg_id);
+    } else {
+        req.state().store.reset_vote(room_id, sess_id, msg_id);
+    }
+    Ok(tide::Response::new(tide::StatusCode::Ok))
+}
+
 #[async_std::main]
 async fn main() -> tide::Result<()> {
     let mut tera = Tera::new("templates/**/*")?;
@@ -203,6 +220,7 @@ async fn main() -> tide::Result<()> {
     app.at("/:room/session/:session").post(update_session);
     app.at("/:room/session/:session").get(get_session);
     app.at("/:room/session/:session/message").post(chat_send);
+    app.at("/:room/session/:session/vote/:message").post(set_vote);
 
     app.at("/new").post(make_chat);
     app.at("/").get(|req: tide::Request<State>| async move {
