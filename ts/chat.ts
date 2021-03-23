@@ -122,10 +122,11 @@ class Client {
      * Change the current user. There must be an open session.
      */
     public async setUser(user: string) {
-        await fetch(`/${this.room}/session/${this.session}`, {
-            method: 'POST',
+        await fetch(`/${this.room}/session`, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
+                'Session': this.session!,
             },
             body: JSON.stringify({user}),
         });

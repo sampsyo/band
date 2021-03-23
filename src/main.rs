@@ -180,7 +180,7 @@ async fn make_session(mut req: tide::Request<State>) -> tide::Result {
 async fn update_session(mut req: tide::Request<State>) -> tide::Result {
     let data: IncomingSession = req.body_json().await?;
     let room_id = req.state().room_or_404(req.param("room")?)?;
-    let sess_id = req.state().parse_id(req.param("session")?)?;
+    let (sess_id, _) = req.state().require_session(&req, room_id)?;
     req.state().store.set_user(room_id, sess_id, &data.user)?;
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
@@ -227,7 +227,7 @@ async fn main() -> tide::Result<()> {
 
     app.at("/:room/session").post(make_session);
     app.at("/:room/session").get(get_session);
-    app.at("/:room/session/:session").post(update_session);
+    app.at("/:room/session").put(update_session);
 
     app.at("/:room/message").post(chat_send);
     app.at("/:room/message/:message/vote").post(set_vote);
