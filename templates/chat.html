@@ -21,6 +21,20 @@
         </form>
     </div>
 
+    <template id="tmplMessage">
+        <p>
+            <span class="user"></span>
+            <button class="vote">★</button>
+            <span class="body"></span>
+        </p>
+    </template>
+
+    <template id="tmplSysMessage">
+        <p class="system">
+            <span class="body"></span>
+        </p>
+    </template>
+
     <script>var BAND_ROOM_ID = "{{room_id}}";</script>
     <script src="/static/js/chat.js"></script>
 </body>

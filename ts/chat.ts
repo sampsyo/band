@@ -150,40 +150,37 @@ class Client {
     }
 }
 
+function loadTemplate(id: string): Element {
+    const tmpl = document.getElementById(id)! as HTMLTemplateElement;
+    return tmpl.content.firstElementChild!;
+}
+
 window.addEventListener('DOMContentLoaded', async (event) => {
     const outEl = document.getElementById("messages")!;
     const outContainerEl = document.getElementById("output")!;
     const formEl = document.getElementById("send")! as HTMLFormElement;
     const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
 
+    const msgTmpl = loadTemplate("tmplMessage");
+    const sysTmpl = loadTemplate("tmplSysMessage");
+
     function addMessage(msg: Message | SystemMessage, fresh: boolean) {
-        const line = document.createElement("p");
+        let line: HTMLElement;
+        if ("system" in msg) {
+            line = sysTmpl.cloneNode(true) as HTMLElement;
+        } else {
+            const l = msgTmpl.cloneNode(true) as HTMLElement;
+            l.dataset['id'] = msg.id;
+            l.querySelector('.user')!.textContent = `${msg.user}:`;
+            l.querySelector('.vote')!.addEventListener('click', handleVote);
+            line = l;
+        }
+        line.querySelector('.body')!.textContent = msg.body;
+
         if (fresh) {
             line.classList.add("fresh");
             setTimeout(() => line.classList.add("done"), 0);
         }
-
-        if ("system" in msg) {
-            line.classList.add("system");
-        } else {
-            line.dataset['id'] = msg.id;
-
-            const user = document.createElement("span");
-            user.classList.add("user");
-            user.textContent = `${msg.user}:`;
-            line.appendChild(user);
-
-            const vote = document.createElement("button");
-            vote.classList.add("vote");
-            vote.textContent = "★";
-            vote.addEventListener('click', handleVote);
-            line.appendChild(vote);
-        }
-
-        const body = document.createElement("span");
-        body.classList.add("body");
-        line.appendChild(body);
-        body.textContent = msg.body;
 
         outEl.appendChild(line);
         outContainerEl.scrollTop = 0;
