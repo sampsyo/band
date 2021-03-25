@@ -145,4 +145,22 @@ impl Store {
         let iter = self.vote_tree(room)?.scan_prefix(&message.to_be_bytes());
         Ok(iter.count())
     }
+
+    pub fn iter_votes(&self, room: Id, session: Id) -> sled::Result<impl Iterator<Item=sled::Result<Id>>> {
+        // An inverted index would sure be nice here...
+        Ok(self.vote_tree(room)?.iter().keys().filter_map(move |res| {
+            match res {
+                Ok(key) => {
+                    let key_sess = to_id(key.subslice(8, 8));
+                    let key_msg = to_id(key.subslice(0, 8));
+                    if key_sess == session {
+                        Some(Ok(key_msg))
+                    } else {
+                        None
+                    }
+                },
+                Err(e) => Some(Err(e)),
+            }
+        }))
+    }
 }

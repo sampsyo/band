@@ -212,6 +212,14 @@ async fn set_vote(mut req: tide::Request<State>) -> tide::Result {
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 
+async fn get_votes(req: tide::Request<State>) -> tide::Result<Body> {
+    let room_id = req.state().room_or_404(req.param("room")?)?;
+    let (sess_id, _) = req.state().require_session(&req, room_id)?;
+
+    let votes: Result<Vec<_>, _> = req.state().store.iter_votes(room_id, sess_id)?.collect();
+    tide::Body::from_json(&votes?)
+}
+
 #[async_std::main]
 async fn main() -> tide::Result<()> {
     let mut tera = Tera::new("templates/**/*")?;
@@ -228,6 +236,7 @@ async fn main() -> tide::Result<()> {
     app.at("/:room/chat").get(tide::sse::endpoint(chat_stream));
     app.at("/:room").get(chat_page);
     app.at("/:room/history").get(chat_history);
+    app.at("/:room/votes").get(get_votes);
 
     app.at("/:room/session").post(make_session);
     app.at("/:room/session").get(get_session);
