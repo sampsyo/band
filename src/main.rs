@@ -216,8 +216,12 @@ async fn get_votes(req: tide::Request<State>) -> tide::Result<Body> {
     let room_id = req.state().room_or_404(req.param("room")?)?;
     let (sess_id, _) = req.state().require_session(&req, room_id)?;
 
-    let votes: Result<Vec<_>, _> = req.state().store.iter_votes(room_id, sess_id)?.collect();
-    tide::Body::from_json(&votes?)
+    let votes = req.state().store.iter_votes(room_id, sess_id)?;
+    let vote_strs = votes.map(|r| {
+        r.map(|id| req.state().fmt_id(id))
+    });
+    let vote_vec: Result<Vec<_>, _> = vote_strs.collect();
+    tide::Body::from_json(&vote_vec?)
 }
 
 #[async_std::main]
