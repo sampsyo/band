@@ -245,5 +245,10 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         formEl.reset();
     });
 
-    console.log(await client.get_votes());
+    const votes = await client.get_votes();
+    console.log(`loaded ${votes.length} previous votes`);
+    for (const voteId of votes) {
+        const voteMsg = outEl.querySelector(`[data-id="${voteId}"]`)!;
+        voteMsg.classList.add('voted');
+    }
 });
