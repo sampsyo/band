@@ -149,6 +149,16 @@ class Client {
             body: vote ? "1" : "0",
         });
     }
+
+    /**
+     * Get the IDs of messages the current session has voted for.
+     */
+    public async get_votes(): Promise<string[]> {
+        const res = await fetch(`/${this.room}/votes`, {
+            headers: { 'Session': this.session! }
+        });
+        return await res.json();
+    }
 }
 
 function loadTemplate(id: string): Element {
@@ -234,4 +244,6 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
         formEl.reset();
     });
+
+    console.log(await client.get_votes());
 });
