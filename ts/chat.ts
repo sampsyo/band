@@ -254,7 +254,7 @@ class View {
         }
     }
 
-    getMsgEl = (id: string) => {
+    getMsgEl(id: string) {
         return this.els.out.querySelector<HTMLElement>(
             `[data-id="${id}"]`
         )!;
@@ -268,7 +268,7 @@ class View {
             votes ? votes.toString() : "";
     }
 
-    showVotes = (votes: string[]) => {
+    showVotes(votes: string[]) {
         for (const voteId of votes) {
             const voteMsg = this.getMsgEl(voteId);
             voteMsg.classList.add('voted');
