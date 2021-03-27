@@ -187,9 +187,8 @@ interface ViewElements {
 }
 
 class View {
-    client: Client | undefined;
-
     constructor(
+        public readonly client: Client,
         public readonly els: ViewElements,
     ) {
         this.els.form.addEventListener('submit', async (event) => {
@@ -199,11 +198,11 @@ class View {
             if (text.startsWith(USERNAME_CMD)) {
                 // Update username.
                 const newname = text.split(' ')[1];
-                await this.client!.setUser(newname);
+                await this.client.setUser(newname);
                 this.setUser(newname);
             } else {
                 // Fire and forget; no need to await.
-                this.client!.send(text);
+                this.client.send(text);
             }
 
             this.els.form.reset();
@@ -250,7 +249,7 @@ class View {
         const voted = msg.classList.contains('voted');
 
         console.log(`voting ${!voted} for ${id}`);
-        await this.client!.vote(id, !voted);
+        await this.client.vote(id, !voted);
 
         if (voted) {
             msg.classList.remove("voted");
@@ -288,7 +287,7 @@ function loadTemplate(id: string): Element {
 
 window.addEventListener('DOMContentLoaded', async (event) => {
     const client = new Client(BAND_ROOM_ID);
-    const view = new View({
+    const view = new View(client, {
         out: document.getElementById("messages")!,
         outContainer: document.getElementById("output")!,
         form: document.getElementById("send")! as HTMLFormElement,
@@ -297,7 +296,6 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         msgTmpl: loadTemplate("tmplMessage"),
         sysTmpl: loadTemplate("tmplSysMessage"),
     });
-    view.client = client;
     client.onMessage = view.addMessage.bind(view);
     client.onVote = view.changeVote.bind(view);
 
