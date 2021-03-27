@@ -24,13 +24,10 @@ interface SystemMessage {
 
 class Client {
     session: string | undefined;
+    onMessage?: (msg: Message | SystemMessage, fresh: boolean) => void;
+    onVote?: (vote: VoteChange) => void;
 
-    constructor(
-        public readonly room: string,
-        public readonly addMessage: (msg: Message | SystemMessage,
-                                     fresh: boolean) => void,
-        public readonly changeVote: (vote: VoteChange) => void,
-    ) { }
+    constructor(public readonly room: string) { }
 
     /**
      * Start receiving messages from the room.
@@ -40,7 +37,9 @@ class Client {
         const res = await fetch(`/${this.room}/history`);
         const data = await res.json();
         for (const msg of data) {
-            this.addMessage(msg, false);
+            if (this.onMessage) {
+                this.onMessage(msg, false);
+            }
         }
 
         // Listen for new events.
@@ -53,11 +52,15 @@ class Client {
         });
         source.addEventListener('message', (event) => {
             console.log("received message", event);
-            this.addMessage(JSON.parse(event.data), true);
+            if (this.onMessage) {
+                this.onMessage(JSON.parse(event.data), true);
+            }
         });
         source.addEventListener('vote', (event) => {
             console.log("received vote", event);
-            this.changeVote(JSON.parse((event as MessageEvent).data));
+            if (this.onVote) {
+                this.onVote(JSON.parse((event as MessageEvent).data));
+            }
         });
     }
 
@@ -143,10 +146,12 @@ class Client {
             body: JSON.stringify({user}),
         });
 
-        this.addMessage({
-            body: `you are now known as ${user}`,
-            system: true,
-        }, true);
+        if (this.onMessage) {
+            this.onMessage({
+                body: `you are now known as ${user}`,
+                system: true,
+            }, true);
+        }
     }
 
     /**
@@ -282,6 +287,7 @@ function loadTemplate(id: string): Element {
 }
 
 window.addEventListener('DOMContentLoaded', async (event) => {
+    const client = new Client(BAND_ROOM_ID);
     const view = new View({
         out: document.getElementById("messages")!,
         outContainer: document.getElementById("output")!,
@@ -291,10 +297,9 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         msgTmpl: loadTemplate("tmplMessage"),
         sysTmpl: loadTemplate("tmplSysMessage"),
     });
-
-    const client = new Client(BAND_ROOM_ID,
-        view.addMessage.bind(view), view.changeVote.bind(view));
     view.client = client;
+    client.onMessage = view.addMessage.bind(view);
+    client.onVote = view.changeVote.bind(view);
 
     const connect_fut = client.connect();
     const session_fut = client.open_session(view.getUser());
