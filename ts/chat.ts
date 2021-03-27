@@ -195,7 +195,7 @@ class View {
                 // Update username.
                 const newname = text.split(' ')[1];
                 await this.client!.setUser(newname);
-                localStorage.setItem('username', newname);
+                this.setUser(newname);
             } else {
                 // Fire and forget; no need to await.
                 this.client!.send(text);
@@ -203,6 +203,14 @@ class View {
 
             this.els.form.reset();
         });
+    }
+
+    setUser(user: string) {
+        localStorage.setItem('username', user);
+    }
+
+    getUser(): string {
+        return localStorage.getItem('username') || DEFAULT_USERNAME;
     }
 
     addMessage = (msg: Message | SystemMessage, fresh: boolean) => {
@@ -288,8 +296,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     view.client = client;
 
     const connect_fut = client.connect();
-    const user = localStorage.getItem('username') || DEFAULT_USERNAME;
-    const session_fut = client.open_session(user);
+    const session_fut = client.open_session(view.getUser());
     await connect_fut;
     await session_fut;
 
