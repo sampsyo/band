@@ -19,12 +19,17 @@ struct OutgoingMessage {
     ts: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone)]
+enum Event {
+    Message(OutgoingMessage),
+}
+
+type Channel = BroadcastChannel<Event>;
+
 #[derive(Serialize, Deserialize, Debug)]
 struct IncomingSession {
     user: String,
 }
-
-type Channel = BroadcastChannel<OutgoingMessage>;
 
 #[derive(Clone)]
 struct State {
@@ -94,7 +99,8 @@ impl State {
 
         // Send to connected clients.
         let outgoing = self.outgoing_message(&session, id, &msg, 0);
-        self.get_chan(room_id).send(&outgoing).await?;
+        let evt = Event::Message(outgoing);
+        self.get_chan(room_id).send(&evt).await?;
 
         Ok(())
     }
@@ -115,10 +121,14 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
     let room_id = req.state().room_or_404(req.param("room")?)?;
     let mut chan = req.state().get_chan(room_id);
 
-    while let Some(msg) = chan.next().await {
-        log::debug!("emitting message: {:?}", msg);
-        let data = serde_json::to_string(&msg)?;
-        sender.send("message", data, None).await?;
+    while let Some(evt) = chan.next().await {
+        match evt {
+            Event::Message(msg) => {
+                log::debug!("emitting message: {:?}", msg);
+                let data = serde_json::to_string(&msg)?;
+                sender.send("message", data, None).await?;
+            }
+        }
     }
 
     Ok(())
