@@ -171,30 +171,51 @@ class Client {
     }
 }
 
-function loadTemplate(id: string): Element {
-    const tmpl = document.getElementById(id)! as HTMLTemplateElement;
-    return tmpl.content.firstElementChild!;
+interface ViewElements {
+    readonly outEl: HTMLElement;
+    readonly outContainerEl: HTMLElement;
+    readonly formEl: HTMLFormElement;
+    readonly msgEl: HTMLInputElement;
+
+    readonly msgTmpl: Element;
+    readonly sysTmpl: Element;
 }
 
-window.addEventListener('DOMContentLoaded', async (event) => {
-    const outEl = document.getElementById("messages")!;
-    const outContainerEl = document.getElementById("output")!;
-    const formEl = document.getElementById("send")! as HTMLFormElement;
-    const msgEl = document.getElementById("sendMessage")! as HTMLInputElement;
+class View {
+    client: Client | undefined;
 
-    const msgTmpl = loadTemplate("tmplMessage");
-    const sysTmpl = loadTemplate("tmplSysMessage");
+    constructor(
+        public readonly els: ViewElements,
+    ) {
+        this.els.formEl.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const text = this.els.msgEl.value;
 
-    function addMessage(msg: Message | SystemMessage, fresh: boolean) {
+            if (text.startsWith(USERNAME_CMD)) {
+                // Update username.
+                const newname = text.split(' ')[1];
+                await this.client!.setUser(newname);
+                localStorage.setItem('username', newname);
+            } else {
+                // Fire and forget; no need to await.
+                this.client!.send(text);
+            }
+
+            this.els.formEl.reset();
+        });
+    }
+
+    addMessage = (msg: Message | SystemMessage, fresh: boolean) => {
         let line: HTMLElement;
         if ("system" in msg) {
-            line = sysTmpl.cloneNode(true) as HTMLElement;
+            line = this.els.sysTmpl.cloneNode(true) as HTMLElement;
         } else {
-            const l = msgTmpl.cloneNode(true) as HTMLElement;
+            const l = this.els.msgTmpl.cloneNode(true) as HTMLElement;
             l.dataset['id'] = msg.id;
             l.dataset['votes'] = msg.votes.toString();
             l.querySelector('.user')!.textContent = `${msg.user}:`;
-            l.querySelector('.vote')!.addEventListener('click', handleVote);
+            l.querySelector('.vote')!.addEventListener('click',
+                this.handleVote);
             l.querySelector('.vote .count')!.textContent =
                 msg.votes ? msg.votes.toString() : "";
             line = l;
@@ -206,17 +227,17 @@ window.addEventListener('DOMContentLoaded', async (event) => {
             setTimeout(() => line.classList.add("done"), 0);
         }
 
-        outEl.appendChild(line);
-        outContainerEl.scrollTop = 0;
+        this.els.outEl.appendChild(line);
+        this.els.outContainerEl.scrollTop = 0;
     }
 
-    async function handleVote(event: Event) {
+    handleVote = async (event: Event) => {
         const msg = (event.target as Element).parentElement!;
         const id = msg.dataset['id']!;
         const voted = msg.classList.contains('voted');
 
         console.log(`voting ${!voted} for ${id}`);
-        await client.vote(id, !voted);
+        await this.client!.vote(id, !voted);
 
         if (voted) {
             msg.classList.remove("voted");
@@ -225,46 +246,54 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         }
     }
 
-    function getMsgEl(id: string): HTMLElement {
-        return outEl.querySelector<HTMLElement>(`[data-id="${id}"]`)!;
+    getMsgEl = (id: string) => {
+        return this.els.outEl.querySelector<HTMLElement>(
+            `[data-id="${id}"]`
+        )!;
     }
 
-    function changeVote(vote: VoteChange) {
-        const msg = getMsgEl(vote.message);
+    changeVote = (vote: VoteChange) => {
+        const msg = this.getMsgEl(vote.message);
         const votes = parseInt(msg.dataset['votes']!) + vote.delta;
         msg.dataset['votes'] = votes.toString();
         msg.querySelector('.vote .count')!.textContent =
             votes ? votes.toString() : "";
     }
 
-    const client = new Client(BAND_ROOM_ID, addMessage, changeVote);
+    showVotes = (votes: string[]) => {
+        for (const voteId of votes) {
+            const voteMsg = this.getMsgEl(voteId);
+            voteMsg.classList.add('voted');
+        }
+    }
+}
+
+function loadTemplate(id: string): Element {
+    const tmpl = document.getElementById(id)! as HTMLTemplateElement;
+    return tmpl.content.firstElementChild!;
+}
+
+window.addEventListener('DOMContentLoaded', async (event) => {
+    const view = new View({
+        outEl: document.getElementById("messages")!,
+        outContainerEl: document.getElementById("output")!,
+        formEl: document.getElementById("send")! as HTMLFormElement,
+        msgEl: document.getElementById("sendMessage")! as HTMLInputElement,
+
+        msgTmpl: loadTemplate("tmplMessage"),
+        sysTmpl: loadTemplate("tmplSysMessage"),
+    });
+
+    const client = new Client(BAND_ROOM_ID, view.addMessage, view.changeVote);
+    view.client = client;
+
     const connect_fut = client.connect();
     const user = localStorage.getItem('username') || DEFAULT_USERNAME;
     const session_fut = client.open_session(user);
     await connect_fut;
     await session_fut;
 
-    formEl.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const text = msgEl.value;
-
-        if (text.startsWith(USERNAME_CMD)) {
-            // Update username.
-            const newname = text.split(' ')[1];
-            await client.setUser(newname);
-            localStorage.setItem('username', user);
-        } else {
-            // Fire and forget; no need to await.
-            client.send(text);
-        }
-
-        formEl.reset();
-    });
-
     const votes = await client.get_votes();
     console.log(`loaded ${votes.length} previous votes`);
-    for (const voteId of votes) {
-        const voteMsg = getMsgEl(voteId);
-        voteMsg.classList.add('voted');
-    }
+    view.showVotes(votes);
 });
