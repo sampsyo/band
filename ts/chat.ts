@@ -225,9 +225,12 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         }
     }
 
-    function changeVote(vote: VoteChange) {
-        const msg = outEl.querySelector(`[data-id="${vote.message}"]`) as HTMLElement;
+    function getMsgEl(id: string): HTMLElement {
+        return outEl.querySelector<HTMLElement>(`[data-id="${id}"]`)!;
+    }
 
+    function changeVote(vote: VoteChange) {
+        const msg = getMsgEl(vote.message);
         const votes = parseInt(msg.dataset['votes']!) + vote.delta;
         msg.dataset['votes'] = votes.toString();
         msg.querySelector('.vote .count')!.textContent =
@@ -261,7 +264,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     const votes = await client.get_votes();
     console.log(`loaded ${votes.length} previous votes`);
     for (const voteId of votes) {
-        const voteMsg = outEl.querySelector(`[data-id="${voteId}"]`)!;
+        const voteMsg = getMsgEl(voteId);
         voteMsg.classList.add('voted');
     }
 });
