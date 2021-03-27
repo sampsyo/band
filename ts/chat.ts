@@ -213,7 +213,7 @@ class View {
         return localStorage.getItem('username') || DEFAULT_USERNAME;
     }
 
-    addMessage = (msg: Message | SystemMessage, fresh: boolean) => {
+    addMessage(msg: Message | SystemMessage, fresh: boolean) {
         let line: HTMLElement;
         if ("system" in msg) {
             line = this.els.sysTmpl.cloneNode(true) as HTMLElement;
@@ -223,7 +223,7 @@ class View {
             l.dataset['votes'] = msg.votes.toString();
             l.querySelector('.user')!.textContent = `${msg.user}:`;
             l.querySelector('.vote')!.addEventListener('click',
-                this.handleVote);
+                this.handleVote.bind(this));
             l.querySelector('.vote .count')!.textContent =
                 msg.votes ? msg.votes.toString() : "";
             line = l;
@@ -239,7 +239,7 @@ class View {
         this.els.outContainer.scrollTop = 0;
     }
 
-    handleVote = async (event: Event) => {
+    async handleVote(event: Event) {
         const msg = (event.target as Element).parentElement!;
         const id = msg.dataset['id']!;
         const voted = msg.classList.contains('voted');
@@ -260,7 +260,7 @@ class View {
         )!;
     }
 
-    changeVote = (vote: VoteChange) => {
+    changeVote(vote: VoteChange) {
         const msg = this.getMsgEl(vote.message);
         const votes = parseInt(msg.dataset['votes']!) + vote.delta;
         msg.dataset['votes'] = votes.toString();
@@ -292,7 +292,8 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         sysTmpl: loadTemplate("tmplSysMessage"),
     });
 
-    const client = new Client(BAND_ROOM_ID, view.addMessage, view.changeVote);
+    const client = new Client(BAND_ROOM_ID,
+        view.addMessage.bind(view), view.changeVote.bind(view));
     view.client = client;
 
     const connect_fut = client.connect();
