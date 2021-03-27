@@ -12,6 +12,11 @@ interface Message {
     votes: number;
 }
 
+interface VoteChange {
+    message: string;
+    delta: number;
+}
+
 interface SystemMessage {
     body: string;
     system: true;
@@ -24,6 +29,7 @@ class Client {
         public readonly room: string,
         public readonly addMessage: (msg: Message | SystemMessage,
                                      fresh: boolean) => void,
+        public readonly changeVote: (vote: VoteChange) => void,
     ) { }
 
     /**
@@ -46,8 +52,12 @@ class Client {
             console.log("error", event);
         });
         source.addEventListener('message', (event) => {
-            console.log("message", event);
+            console.log("received message", event);
             this.addMessage(JSON.parse(event.data), true);
+        });
+        source.addEventListener('vote', (event) => {
+            console.log("received vote", event);
+            this.changeVote(JSON.parse((event as MessageEvent).data));
         });
     }
 
@@ -213,15 +223,18 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         } else {
             msg.classList.add("voted");
         }
+    }
 
-        const votes = parseInt(msg.dataset['votes']!) +
-            (voted ? -1 : 1);
+    function changeVote(vote: VoteChange) {
+        const msg = outEl.querySelector(`[data-id="${vote.message}"]`) as HTMLElement;
+
+        const votes = parseInt(msg.dataset['votes']!) + vote.delta;
         msg.dataset['votes'] = votes.toString();
         msg.querySelector('.vote .count')!.textContent =
             votes ? votes.toString() : "";
     }
 
-    const client = new Client(BAND_ROOM_ID, addMessage);
+    const client = new Client(BAND_ROOM_ID, addMessage, changeVote);
     const connect_fut = client.connect();
     const user = localStorage.getItem('username') || DEFAULT_USERNAME;
     const session_fut = client.open_session(user);
