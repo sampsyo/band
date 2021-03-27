@@ -19,9 +19,16 @@ struct OutgoingMessage {
     ts: DateTime<Utc>,
 }
 
+#[derive(Serialize, Debug, Clone)]
+struct VoteChange {
+    message: String,
+    delta: i8,
+}
+
 #[derive(Debug, Clone)]
 enum Event {
     Message(OutgoingMessage),
+    Vote(VoteChange),
 }
 
 type Channel = BroadcastChannel<Event>;
@@ -127,7 +134,12 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
                 log::debug!("emitting message: {:?}", msg);
                 let data = serde_json::to_string(&msg)?;
                 sender.send("message", data, None).await?;
-            }
+            },
+            Event::Vote(vote) => {
+                log::debug!("emitting vote: {:?}", vote);
+                let data = serde_json::to_string(&vote)?;
+                sender.send("vote", data, None).await?;
+            },
         }
     }
 
@@ -213,12 +225,21 @@ async fn set_vote(mut req: tide::Request<State>) -> tide::Result {
     let (sess_id, _) = req.state().require_session(&req, room_id)?;
     let msg_id = req.state().parse_id(req.param("message")?)?;  // TODO 404
 
+    // Record the vote.
     log::debug!("received vote in {}: {} for {}", room_id, vote, msg_id);
     if vote {
         req.state().store.set_vote(room_id, msg_id, sess_id)?;
     } else {
         req.state().store.reset_vote(room_id, msg_id, sess_id)?;
     }
+
+    // Emit vote-change event.
+    let evt = Event::Vote(VoteChange {
+        message: req.state().fmt_id(msg_id),
+        delta: if vote { 1 } else { -1 },
+    });
+    req.state().get_chan(room_id).send(&evt).await?;
+
     Ok(tide::Response::new(tide::StatusCode::Ok))
 }
 
