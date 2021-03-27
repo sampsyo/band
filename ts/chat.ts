@@ -172,10 +172,10 @@ class Client {
 }
 
 interface ViewElements {
-    readonly outEl: HTMLElement;
-    readonly outContainerEl: HTMLElement;
-    readonly formEl: HTMLFormElement;
-    readonly msgEl: HTMLInputElement;
+    readonly out: HTMLElement;
+    readonly outContainer: HTMLElement;
+    readonly form: HTMLFormElement;
+    readonly msg: HTMLInputElement;
 
     readonly msgTmpl: Element;
     readonly sysTmpl: Element;
@@ -187,9 +187,9 @@ class View {
     constructor(
         public readonly els: ViewElements,
     ) {
-        this.els.formEl.addEventListener('submit', async (event) => {
+        this.els.form.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const text = this.els.msgEl.value;
+            const text = this.els.msg.value;
 
             if (text.startsWith(USERNAME_CMD)) {
                 // Update username.
@@ -201,7 +201,7 @@ class View {
                 this.client!.send(text);
             }
 
-            this.els.formEl.reset();
+            this.els.form.reset();
         });
     }
 
@@ -227,8 +227,8 @@ class View {
             setTimeout(() => line.classList.add("done"), 0);
         }
 
-        this.els.outEl.appendChild(line);
-        this.els.outContainerEl.scrollTop = 0;
+        this.els.out.appendChild(line);
+        this.els.outContainer.scrollTop = 0;
     }
 
     handleVote = async (event: Event) => {
@@ -247,7 +247,7 @@ class View {
     }
 
     getMsgEl = (id: string) => {
-        return this.els.outEl.querySelector<HTMLElement>(
+        return this.els.out.querySelector<HTMLElement>(
             `[data-id="${id}"]`
         )!;
     }
@@ -275,10 +275,10 @@ function loadTemplate(id: string): Element {
 
 window.addEventListener('DOMContentLoaded', async (event) => {
     const view = new View({
-        outEl: document.getElementById("messages")!,
-        outContainerEl: document.getElementById("output")!,
-        formEl: document.getElementById("send")! as HTMLFormElement,
-        msgEl: document.getElementById("sendMessage")! as HTMLInputElement,
+        out: document.getElementById("messages")!,
+        outContainer: document.getElementById("output")!,
+        form: document.getElementById("send")! as HTMLFormElement,
+        msg: document.getElementById("sendMessage")! as HTMLInputElement,
 
         msgTmpl: loadTemplate("tmplMessage"),
         sysTmpl: loadTemplate("tmplSysMessage"),
