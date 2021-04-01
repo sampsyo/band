@@ -1,5 +1,5 @@
 use tera::Tera;
-use tide::{Body, log};
+use tide::{Body, log, Response, StatusCode};
 use tide_tera::prelude::*;
 use broadcaster::BroadcastChannel;
 use futures_util::StreamExt;
@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use chrono::prelude::*;
+use rust_embed::RustEmbed;
+use std::path::Path;
 
 mod store;
 
@@ -146,6 +148,10 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
     Ok(())
 }
 
+#[derive(RustEmbed)]
+#[folder = "static/"]
+struct StaticAsset;
+
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let body = req.body_string().await?;
     let room_id = req.state().room_or_404(req.param("room")?)?;
@@ -153,7 +159,7 @@ async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
 
     log::debug!("received message in {}: {:?}", room_id, body);
     req.state().send_message(room_id, sess_id, &sess, body).await?;
-    Ok(tide::Response::new(tide::StatusCode::Ok))
+    Ok(Response::new(StatusCode::Ok))
 }
 
 async fn chat_page(req: tide::Request<State>) -> tide::Result {
@@ -200,7 +206,7 @@ async fn make_session(mut req: tide::Request<State>) -> tide::Result {
     };
     let id = req.state().store.add_session(room_id, &session)?;
     let id_str = req.state().harsh.encode(&[id]);
-    Ok(tide::Response::from(id_str))
+    Ok(Response::from(id_str))
 }
 
 async fn update_session(mut req: tide::Request<State>) -> tide::Result {
@@ -208,7 +214,7 @@ async fn update_session(mut req: tide::Request<State>) -> tide::Result {
     let room_id = req.state().room_or_404(req.param("room")?)?;
     let (sess_id, _) = req.state().require_session(&req, room_id)?;
     req.state().store.set_user(room_id, sess_id, &data.user)?;
-    Ok(tide::Response::new(tide::StatusCode::Ok))
+    Ok(Response::new(StatusCode::Ok))
 }
 
 async fn get_session(req: tide::Request<State>) -> tide::Result<Body> {
@@ -240,7 +246,7 @@ async fn set_vote(mut req: tide::Request<State>) -> tide::Result {
     });
     req.state().get_chan(room_id).send(&evt).await?;
 
-    Ok(tide::Response::new(tide::StatusCode::Ok))
+    Ok(Response::new(StatusCode::Ok))
 }
 
 async fn get_votes(req: tide::Request<State>) -> tide::Result<Body> {
@@ -253,6 +259,39 @@ async fn get_votes(req: tide::Request<State>) -> tide::Result<Body> {
     });
     let vote_vec: Result<Vec<_>, _> = vote_strs.collect();
     tide::Body::from_json(&vote_vec?)
+}
+
+// Like Body::from_bytes, but also guesses a MIME type from the path like
+// Body::from_file.
+fn body_from_bytes_and_path(bytes: Vec<u8>, path: &Path) -> tide::Body {
+    let mut body = tide::Body::from_bytes(bytes);
+
+    // From http-types's guess_ext.
+    let ext = path.extension().map(|p| p.to_str()).flatten();
+    let m = ext.and_then(http_types::Mime::from_extension);
+
+    match m {
+        Some(mime) => body.set_mime(mime),
+        None => (),
+    }
+
+    body
+}
+
+async fn static_asset(req: tide::Request<State>) -> tide::Result {
+    // From tide::ServeDir.
+    let path = req.url().path();
+    let path = path.strip_prefix("/static").unwrap();
+    let path = path.trim_start_matches('/');
+    log::info!("requested static file: {:?}", path);
+
+    match StaticAsset::get(&path) {
+        Some(b) => {
+            let body = body_from_bytes_and_path(b.to_vec(), Path::new(path));
+            Ok(Response::builder(StatusCode::Ok).body(body).build())
+        },
+        None => Ok(Response::new(StatusCode::NotFound))
+    }
 }
 
 #[async_std::main]
@@ -286,7 +325,7 @@ async fn main() -> tide::Result<()> {
         tera.render_response("home.html", &context! {})
     });
 
-    app.at("/static").serve_dir("static/")?;
+    app.at("/static/*").get(static_asset);
 
     app.listen("localhost:8080").await?;
     Ok(())
