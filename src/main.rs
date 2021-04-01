@@ -205,7 +205,7 @@ async fn make_session(mut req: tide::Request<State>) -> tide::Result {
     let room_id = req.state().room_or_404(req.param("room")?)?;
 
     let session = store::Session {
-        user: data.user.to_string(),
+        user: data.user,
         ts: Utc::now(),
     };
     let id = req.state().store.add_session(room_id, &session)?;
@@ -274,11 +274,9 @@ fn body_from_bytes_and_path(bytes: Vec<u8>, path: &Path) -> tide::Body {
     let ext = path.extension().map(|p| p.to_str()).flatten();
     let m = ext.and_then(http_types::Mime::from_extension);
 
-    match m {
-        Some(mime) => body.set_mime(mime),
-        None => (),
+    if let Some(mime) = m {
+        body.set_mime(mime);
     }
-
     body
 }
 
