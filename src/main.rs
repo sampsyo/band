@@ -152,6 +152,10 @@ async fn chat_stream(req: tide::Request<State>, sender: tide::sse::Sender) -> ti
 #[folder = "static/"]
 struct StaticAsset;
 
+#[derive(RustEmbed)]
+#[folder = "templates/"]
+struct TemplateAsset;
+
 async fn chat_send(mut req: tide::Request<State>) -> tide::Result {
     let body = req.body_string().await?;
     let room_id = req.state().room_or_404(req.param("room")?)?;
@@ -296,7 +300,13 @@ async fn static_asset(req: tide::Request<State>) -> tide::Result {
 
 #[async_std::main]
 async fn main() -> tide::Result<()> {
-    let mut tera = Tera::new("templates/**/*")?;
+    // Set up templates using rust-embed.
+    let mut tera = Tera::default();
+    let tmpls = TemplateAsset::iter().map(|filename| {
+        let tmpl = TemplateAsset::get(&filename).unwrap();
+        (filename, String::from_utf8(tmpl.to_vec()).unwrap())
+    });
+    tera.add_raw_templates(tmpls)?;
     tera.autoescape_on(vec!["html"]);
 
     log::with_level(log::LevelFilter::Debug);
